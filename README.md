@@ -11,8 +11,9 @@ Additionally, I am open to having people contribute examples or improve my examp
 ## File structure
 
 - `README.md` is this file
-- `OccupancyStanIntroduciton.Rmd` is the source file for the tutorial 
-- `OccupancyStanIntroduciton.html` and `OccupancyStanIntroduciton.pdf` are complied versions of this tutorial
+- `OccupancyStanIntroduction.Rmd` is the source file for the tutorial 
+- [`OccupancyStanIntroduction.md`](https://github.com/rerickson-usgs/StanOccupancyModelTutorials/blob/master/OccupancyStanIntroduction.md) is a markdown version of this tutorial so that it will be view-able directly on GitHub. 
+- `OccupancyStanIntroduction.html` and `OccupancyStanIntroduction.pdf` are complied versions of this tutorial
 - `./Chapters/` are the markdown source files for each chapters and are called by `OccupancyStanIntroduction.Rmd` 
 - `./ChaptersCode/` are the R and Stan source files for each chapters and are called by `OccupancyStanIntroduction.Rmd` 
 
