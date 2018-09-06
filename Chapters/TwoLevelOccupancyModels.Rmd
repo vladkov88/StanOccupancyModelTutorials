@@ -1,0 +1,375 @@
+# Two-level occupancy models
+
+```{r echo=FALSE}
+knitr::read_chunk('../ChaptersCode/TwoLevelOccupancyModelExamples/simpleOcccMods.R')
+```
+
+This chapter starts with a simple occupancy model that has one site with multiple observation points (e.g., cameras or traps). 
+The first and simplest model directly estimates probabilities of detection and site occupancy. 
+This model takes a site-by-visit (row of sites, columns of visits or surveys) matrix as the input. 
+The second model then gets changed to estimate parameters on the logit-scale. 
+The third model uses an input vector of the sum of number visits with detentions. 
+The fourth model uses an input vector of binary observations for each visit to a site. 
+
+## A simple occupancy model in Stan
+
+We will start by building a simple occupancy model that only includes a global intercept at each level. 
+This example is based upon the Stan example provided by [Bob Carpenter](https://github.com/stan-dev/example-models/blob/master/misc/ecology/occupancy/occupancy.stan).
+The model would be appropriate for a single site with multiple visits or multiple sites with a single visit. 
+This example either uses space or time for replication. 
+The model assumes the same probability of detection for each observation.
+For simplicity, we will assume that a single site is revisited multiple times.
+
+The probability that the site is occupied is $\psi$ and is estimated on the logit scale: $\mu_\psi$.
+$\mu_\psi$ is predicted by $X \beta$.
+If a site is occupied during a visit, $Z = 1$, otherwise, it would be zero. 
+The probability of detection at a site is $p$ and is estimated on the logit scale: $\mu_{p}$.
+$\mu_\psi$ is predicted by $V \alpha$.
+The raw data for this would $Y$ where the index of $Y$ corresponds to the observation.
+$Y$ must be binary (i.e., 0s or 1s).
+Because we are estimating a single intercept, we only need a vector of 1s as our predictor matrix (or, in this case, scalar) $X$.
+Note that we could simplify this model several ways (e.g., hard coding a single intercept, estimating on the probability scale rather than logit), but use the current formulation because we need these tools later either to extend the model or for numerical efficiency. 
+
+### Matrix input occupancy model
+
+The simplest version of this model use
+The model in Stan contains three code blocks. 
+The first is the `data` block:
+
+    data {
+      int<lower=0> nSites;
+      int<lower=0> nSurveys;
+      int<lower=0,upper=1> y[nSites, nSurveys];
+    }
+	
+	
+which defines the input data into Stan.
+The second is the `parameters` block: 
+
+    parameters {
+      real<lower=0,upper=1> psi;
+      real<lower=0,upper=1> p;
+    }
+	
+which defines the parameters being estimated.
+The third block is the `model` block.
+This block includes local variables to increase the computational efficient of the code.
+The code also includes priors.
+If a user does not specify priors with Stan, then Stan has default priors that account for the constraints of parameters.
+The third part of the block is the likelihood function.
+This includes an if-else statement to account for detection (`if`) or non-detection (`else`) at a site.
+
+    model {
+      // local variables to avoid recomputing log(psi) and log(1 - psi)
+      real log_psi;
+      real log1m_psi;
+      log_psi = log(psi);
+      log1m_psi = log1m(psi);
+    
+      // priors
+      psi ~ uniform(0,1);
+      p   ~ uniform(0,1);
+      
+      // likelihood
+      for (r in 1:nSites) {
+        if (sum(y[r]) > 0)
+          target += log_psi + bernoulli_lpmf(y[r] | p);
+        else
+          target += log_sum_exp(log_psi + bernoulli_lpmf(y[r] | p),
+    			    log1m_psi);;
+      }
+    }
+
+The data simulation process also can provide us with insight into the how the model works and how we assume our data generation process works. 
+For this case, we are specifying the number of sites and visits (or surveys) per site. 
+We also specify our simulated probability of detection $p$, `p`, and site occupancy probability $psi$, `psi`.
+The next simulation step is to simulate if the sites are occupied and then simulation the surveys at each site. 
+Last, the data are wrapped into a list for Stan.
+
+
+```{r simSimpleData, eval = FALSE}
+```
+
+**Modeling building tip: ** When building a Stan model, I examine the raw data and make sure the Stan model matches the data. 
+Although, this can be an iterative process, because I often discover my data requires wrangling to work with Stan. 
+But, I start the iterative process with the data.
+
+Now that we've simulated the data, we can use it with our model as called by `stan()`.
+
+```{r fitOcc, eval = FALSE}
+```
+
+After fitting the model, we can look at the outputs. 
+The default `print()` option for a `stanfit` object shows a summary of the model's fit. 
+In this case, typing `fitWdie` prints these results:
+
+```{r exampleOutput, eval = FALSE}
+Inference for Stan model: occupancy.
+4 chains, each with iter=2000; warmup=1000; thin=1; 
+post-warmup draws per chain=1000, total post-warmup draws=4000.
+
+        mean se_mean   sd    2.5%     25%     50%     75%   97.5% n_eff Rhat
+psi     0.37    0.00 0.03    0.32    0.35    0.37    0.39    0.43  3587    1
+p       0.60    0.00 0.02    0.56    0.58    0.60    0.61    0.63  4000    1
+lp__ -796.37    0.02 1.01 -799.03 -796.74 -796.08 -795.65 -795.38  1996    1
+
+Samples were drawn using NUTS(diag_e) at Thu Aug 30 13:03:08 2018.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+```
+If these results do not make sense, I strongly recommend either reviewing/learning Stan and Bayesian statistics. 
+
+**Exercise:** Simulate different datasets. Using different occupancy probabilities and sample sizes. Figure out when the model works well and when it does not. 
+
+### Matrix input occupancy model on logit-scale
+
+We can take the model from the previous section and make it more numerically efficient by calculating on the logit scale. 
+This new formulation also allows the inclusion of predictor variables, much like a logistic regression.
+
+This model is different because we are now estimating $\mu_p$ and $\mu_\psi$ rather than these parameter directly.
+Note that $\mu_p = \text{logit}^{-1}(p)$ and $\mu_\psi = \text{logit}^{-1}(\psi)$.
+This means the parameter block for our model is different:
+
+
+    parameters {
+      real muPsi;
+      real muP;
+    }
+
+
+The model code block is also written differently now.
+Key differences include
+
+  - Slightly different likelihood functions are used; and 
+  - the `mu` parameters are now real number that can range from minus infinity to positive infinity. 
+
+However, the model is still very similar to the previously defined model.
+
+    model {
+    
+      real log_muPsi;
+      real log1m_muPsi;
+    
+      log_muPsi   = log_inv_logit(muPsi);
+      log1m_muPsi = log1m_inv_logit(muPsi);
+    
+      muP ~ normal(0, 2);
+      muPsi ~ normal(0, 2);
+      
+      // likelihood
+      for (r in 1:nSites) {
+        if (sum(y[r]) > 0)
+          target +=
+    	log_muPsi + bernoulli_logit_lpmf(y[r] | muP);
+        else
+          target +=
+    	log_sum_exp(log_muPsi +
+    		    bernoulli_logit_lpmf(y[r] | muP), log1m_muPsi);
+      }
+    }
+
+We can transform the parameters to the logit scale to the probability scale in Stan using the `generated quantities` code block. 
+This code block is complied so it is quick, but does not get run through MCMC algorithm. 
+
+    generated quantities{
+      real<lower = 0, upper = 1> p;
+      real<lower = 0, upper = 1> psi;
+    
+      p   = inv_logit(muP);
+      psi = inv_logit(muPsi);
+    }
+
+This model is fit the same as previous model.
+
+```{r fitOccMu, eval = FALSE}
+```
+
+The outputs are similar, other than having small numerical differences due to Monte Carlo variability. 
+The output also include the `muP` and `muPsi` parameters. 
+
+```{r fitOccMuPrint, eval = FALSE}
+
+Inference for Stan model: occupancyMu.
+4 chains, each with iter=2000; warmup=1000; thin=1; 
+post-warmup draws per chain=1000, total post-warmup draws=4000.
+
+         mean se_mean   sd    2.5%     25%     50%     75%   97.5% n_eff Rhat
+muPsi   -0.53    0.00 0.13   -0.78   -0.62   -0.53   -0.44   -0.27  3111    1
+muP      0.39    0.00 0.07    0.26    0.34    0.39    0.43    0.52  3136    1
+p        0.60    0.00 0.02    0.56    0.58    0.60    0.61    0.63  3139    1
+psi      0.37    0.00 0.03    0.31    0.35    0.37    0.39    0.43  3125    1
+lp__  -793.54    0.02 1.01 -796.18 -793.90 -793.21 -792.83 -792.56  1700    1
+
+Samples were drawn using NUTS(diag_e) at Thu Aug 30 13:26:44 2018.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+```
+
+### Binomial input
+
+The previous example assumed that we had the same number of observations per site. 
+One method to side-step this assumption is to use a binomial input rather than a Bernoulli.
+Now our input `y` is the number of surveys or visits where detections occurred and we need a new input `k`, which corresponds to the number of surveys per sites. 
+
+We can summarize our data to be in the needed format and put it into a list for Stan.
+```{r convertToBin, eval = FALSE}
+```
+
+This formulation also changes the `data` block of the model:
+
+
+    data {
+      int<lower=0> nSites;
+      int<lower=0> y[nSites];
+      int<lower=0> k[nSites];
+    }
+
+As well as the likelihood portion of the `model`:
+
+    // likelihood
+      for (r in 1:nSites) {
+        if (y[r] > 0)
+          target +=
+    	log_muPsi + binomial_logit_lpmf(y[r] | k[r],  muP);
+        else
+          target +=
+    	log_sum_exp(log_muPsi +
+    		    binomial_logit_lpmf(y[r] | k[r], muP), log1m_muPsi);
+      }
+
+Before we can fit the model, we need to sum and reformat our data our data:
+
+```{r convertToBin, eval = FALSE}
+```
+
+
+We can then fit this model using Rstan and look at the results, which are similar to the previous results:
+
+```{r fitOccMuBi, eval = FALSE}
+```
+
+```{r lookAtOccMuBiResults, eval = FALSE}
+Inference for Stan model: occupancyMuBinomial.
+4 chains, each with iter=2000; warmup=1000; thin=1; 
+post-warmup draws per chain=1000, total post-warmup draws=4000.
+
+         mean se_mean   sd    2.5%     25%     50%     75%   97.5% n_eff Rhat
+muPsi   -0.52    0.00 0.13   -0.78   -0.61   -0.52   -0.43   -0.27  3619    1
+muP      0.39    0.00 0.07    0.26    0.35    0.39    0.43    0.52  3589    1
+p        0.60    0.00 0.02    0.56    0.59    0.60    0.61    0.63  3589    1
+psi      0.37    0.00 0.03    0.31    0.35    0.37    0.39    0.43  3619    1
+lp__  -342.89    0.02 1.02 -345.71 -343.27 -342.57 -342.15 -341.90  1709    1
+
+Samples were drawn using NUTS(diag_e) at Thu Aug 30 14:31:42 2018.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+```
+
+### Long format occupancy model
+
+What if our data is in a "long format" with one row per survey or visit per site?
+Then, we can build a model, but it is trickier. 
+I received help from [Max Joseph on the Stan user forum](https://discourse.mc-stan.org/t/identifiability-across-levels-in-occupancy-model/5340) who wrote this model.
+Before diving into the Stan code, the data needs to mutated to be the correct shape. 
+I use the `data.table` package to do this. 
+Most people would probably use the `tidyverse` packages. 
+One key part of this code is creating the index of start and stopping numbers for each survey.
+
+```{r convertToLong, eval = FALSE}
+```
+
+The code for this Stan model become more complicated. 
+First, we cannot simply loop over raw observations. 
+Instead, we need to "cut" out the observations for each survey (site visit). 
+This model also includes the ability to include coefficients at different levels, but these will not be discussed until the next section.
+These coefficient include matrices of predictors.
+These are same type that are created by `model.matrix()`.
+
+    data {
+      // site-level occupancy covariates
+      int<lower = 1> nSites;
+      int<lower = 1> nPsiCoef;
+      matrix[nSites, nPsiCoef] Xpsi;
+      
+      // survey-level detection covariates
+      int<lower = 1> totalSurveys;
+      int<lower = 1> nPCoef;
+      matrix[totalSurveys, nPCoef] Vp;
+    
+      // survey level information  
+      int<lower = 1, upper = nSites> site[totalSurveys];
+      int<lower = 0, upper = 1> y[totalSurveys];
+      int<lower = 0, upper = totalSurveys> startIndex[nSites];
+      int<lower = 0, upper = totalSurveys> endIndex[nSites];
+      
+      // summary of whether species is known to be present at each site
+      int<lower = 0, upper = 1> z[nSites];
+      
+      // number of surveys at each site
+      int<lower = 0> nSurveys[nSites];
+    }
+    parameters {
+      vector[nPsiCoef] beta_psi;
+      vector[nPCoef] beta_p;
+    }
+    transformed parameters {
+      vector[totalSurveys] logit_p = Vp * beta_p;
+      vector[nSites] logit_psi = Xpsi * beta_psi;
+    }
+    model {
+      vector[nSites] log_psi = log_inv_logit(logit_psi);
+      vector[nSites] log1m_psi = log1m_inv_logit(logit_psi);
+      
+      beta_psi ~ normal(0, 1);
+      beta_p ~ normal(0, 1);
+      for (i in 1:nSites) {
+        if (nSurveys[i] > 0) {
+          if (z[i]) {
+            // site is occupied
+            target += log_psi[i] 
+                      + bernoulli_logit_lpmf(y[startIndex[i]:endIndex[i]] | 
+                                             logit_p[startIndex[i]:endIndex[i]]);
+          } else {
+            // site may or may not be occupied
+            target += log_sum_exp(
+              log_psi[i] + bernoulli_logit_lpmf(y[startIndex[i]:endIndex[i]] |
+                                                logit_p[startIndex[i]:endIndex[i]]), 
+              log1m_psi[i]
+            );
+          }
+        }
+      }
+    }
+
+After building this model, it may be fit like any other model. 
+Notice the use of the `pars` option in print to only print the parameters of interest. 
+Also, this model did not calculate probabilities because of the coefficients. 
+
+```{r fitLongForm, eval = FALSE}
+```
+
+And the outputs from the model are similar to the other models.
+
+```{r outputFromLongForm, eval = FALSE}
+Inference for Stan model: bernoulli-occupancy.
+4 chains, each with iter=2000; warmup=1000; thin=1; 
+post-warmup draws per chain=1000, total post-warmup draws=4000.
+
+             mean se_mean   sd  2.5%   25%   50%   75% 97.5% n_eff Rhat
+beta_psi[1] -0.52       0 0.13 -0.78 -0.60 -0.51 -0.43 -0.27  3909    1
+beta_p[1]    0.39       0 0.07  0.25  0.34  0.39  0.43  0.51  3393    1
+
+Samples were drawn using NUTS(diag_e) at Thu Aug 30 15:01:05 2018.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+```
+Converting these values to probabilities with the `plogis()` function shows the results are similar to the other modeling methods:
+
+```{r convertToProbChp2, eval= TRUE, echo = TRUE}
+plogis(-0.52)
+plogis(0.39)
+```

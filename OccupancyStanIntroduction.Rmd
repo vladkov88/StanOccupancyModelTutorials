@@ -1,0 +1,25 @@
+---
+title: "Occupancy Models with Stan (with help from R)"
+author: "Richard Erickson"
+date: "5/7/2018"
+output:
+  html_document:
+    toc: yes
+    toc_depth: 3
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r child = './Chapters/Overview.Rmd'}
+```
+
+```{r child = './Chapters/Introduction.Rmd'}
+```
+
+```{r child = './Chapters/TwoLevelOccupancyModels.Rmd'}
+```
