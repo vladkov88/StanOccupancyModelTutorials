@@ -37,18 +37,18 @@ model {
   beta_p ~ normal(0, 1);
   for (i in 1:nSites) {
     if (nSurveys[i] > 0) {
-      if (z[i]) {
+      if (z[i] > 0 ) {
         // site is occupied
-        target += log_psi[i] 
-                  + bernoulli_logit_lpmf(y[startIndex[i]:endIndex[i]] | 
-                                         logit_p[startIndex[i]:endIndex[i]]);
+        target += log_psi[i] + 
+	  bernoulli_logit_lpmf(y[startIndex[i]:endIndex[i]] | 
+			       logit_p[startIndex[i]:endIndex[i]]);
       } else {
         // site may or may not be occupied
         target += log_sum_exp(
-          log_psi[i] + bernoulli_logit_lpmf(y[startIndex[i]:endIndex[i]] |
-                                            logit_p[startIndex[i]:endIndex[i]]), 
-          log1m_psi[i]
-        );
+			      log_psi[i] +
+			      bernoulli_logit_lpmf(y[startIndex[i]:endIndex[i]] |
+						   logit_p[startIndex[i]:endIndex[i]]), 
+			      log1m_psi[i]);
       }
     }
   }

@@ -28,7 +28,7 @@ simpleModelInput <- list(nSites = nSites,
 ## @knitr fitOcc
 ## Fit the model in stan
 
-fitWide <- stan('../simpleModelExamples/occupancy.stan',
+fitWide <- stan('./occupancy.stan',
                 data = simpleModelInput)
 
 fitWide
@@ -36,7 +36,7 @@ fitWide
 ## @knitr fitOccMu
 
 ## Fit the model using parameters on the mu scale
-fitWideMu <- stan('../simpleModelExamples/occupancyMu.stan',
+fitWideMu <- stan('./occupancyMu.stan',
                   data = simpleModelInput)
 
 fitWideMu
@@ -54,7 +54,7 @@ stanSumationData <- list(
 
 ## @knitr fitOccMuBi
 
-fitWideMuBinomial <- stan('../simpleModelExamples/occupancyMuBinomial.stan',
+fitWideMuBinomial <- stan('./occupancyMuBinomial.stan',
                           data = stanSumationData)
 
 fitWideMuBinomial
@@ -104,9 +104,12 @@ stan_d <- list(
 
 ## @knitr fitLongForm
 ## Fit long form model 
-fitWideMuLong <- stan('../simpleModelExamples/bernoulli-occupancy.stan',
+fitWideMuLong <- stan('./bernoulli-occupancy.stan',
                       data= stan_d,
                       chains = 4, iter = 2000)
 
 print(fitWideMuLong, pars = c("beta_psi", "beta_p"))
 
+##              mean se_mean   sd  2.5%   25%   50%   75% 97.5% n_eff Rhat
+## beta_psi[1] -0.52       0 0.13 -0.78 -0.60 -0.51 -0.43 -0.27  3909    1
+## beta_p[1]    0.39       0 0.07  0.25  0.34  0.39  0.43  0.51  3393    1
