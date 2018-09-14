@@ -19,13 +19,24 @@ output:
 # Overview
 
 This document provides an introduction to [occupancy models](https://www.nps.gov/olym/learn/nature/upload/OccupancyModelFactSheet.pdf) in [Stan](http://mc-stan.org/).
-Note that the terms occupancy models and occurrence models can be used synonymous from a statistical and programming perspective, but can have important ecological differences from a scientific perspective. 
+The terms occupancy models and occurrence models can be used synonymous from a statistical and programming perspective, but can have important ecological differences from a scientific perspective. 
 Both terms are used interchangeably within this document unless specifically indicated that one term is appropriate for a specific location.
-This document to help collaborators learn how program occupancy models in Stan. 
+
+## Motivation 
+
+This document was created help collaborators learn how program occupancy models in Stan. 
 Occupancy models can be difficult to program in Stan because they have discrete latent variables (i.e., the site-level occupancy).
 However, compared to other Bayesian programs, Stan can offer better [performance](http://andrewgelman.com/wp-content/uploads/2014/06/stan-overview-dauphine-2014.pdf) (e.g., more rapidly fitting models, converging when other models could not, fewer iterations required).
 
-This tutorials assumes the reader is familiar with R, occupancy models, and Bayesian statistics. Some base knowledge of Stan would be helpful, even if it is just completing the schools "hello world" [example](https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started).
+## Prerequisite knowledge and background 
+
+This tutorials assumes the reader is familiar with R, occupancy models, and Bayesian statistics. Some base knowledge of Stan would be helpful, even if it is just completing the schools "hello world" [example](https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started). 
+This work builds upon a previous [example tutorial](https://github.com/stan-dev/example-models/blob/master/misc/ecology/occupancy/occupancy.stan), which I helped to update. 
+Another [tutorial](http://mbjoseph.github.io/2014/11/14/stan_occ.html) I found did not use current Stan syntax. 
+Last, [a multi-species tutorial exists](http://mc-stan.org/users/documentation/case-studies/dorazio-royle-occupancy.html), but is beyond the (current) scope of this tutorial 
+
+
+## Summary of tutorial 
 
 The introduction covers a brief overview of occupancy models, logistic regression in Stan and R, and matrix notation in R. 
 Next, two-level occupancy models are introduced.
@@ -267,7 +278,7 @@ model.matrix( ~ city, data = df)
 ## [1] "contr.treatment"
 ```
 
-Several things to notice.
+Things to notice about `model.matrix()`:
 
 1.  `model.matrix()` converted city to an alphabetical order factor.
 2.  The first factor is the first in alphabetically. This order may be [changing the factor order in R](http://lmgtfy.com/?q=change+r+factor+order).
@@ -362,6 +373,42 @@ as.numeric(factor(dfocc$occ)) - 1
 ```
 
 Now that you've had a crash course on R topics, let's build our first occupancy model with Stan. 
+
+## Review of log rules and probability 
+
+As you see in the upcoming chapters, Stan requires marginalizing out discrete latent variables. 
+This requires working with probabilities. 
+Probabilities are often log transformed to increase numerical stability (or, informally: make the equations easier for the computer to solve) AND to change from multiplication to addition. 
+Here are some quick refreshers of log rules:
+
+- $\text{log}(xy) = \text{log}(x) + \text{log}(y)$
+- $\text{log}(0) = 1$
+
+
+For example, let's say we flip a coin once.
+The coin has probability $p$ of heads and probability $1-p$ of tails.  
+We get a heads, which we call 1. 
+If we flip the coin 4 times, our outcome could be 1001. 
+The probability of this occurring would be: $p(1-p)(1-p)p$. 
+The product may be denoted using the product operator $\prod$ (much like $\sum$ is used for summation) and generalized.  
+We have $N$ trials and we index over $i$. 
+Trials with heads are considered _successes_, which is denoted with a superscript $s$ = 1. 
+Trials with tails have $s = 0$. 
+These superscripts make the terms either be themselves (e.g., $p^1 = p$) or 1 (e.g., $p^0 = 1$). 
+We can write the probability of the event occurring as $P(y|p)$, which is read as the probability of observation $y$ give probability $p$. 
+This leads to the formulation:
+
+$$P(y|p) =  \prod_{i = 1}^N p^{s_i} (1-p)^{1-s_i}.$$
+
+Taking the log of this gives 
+
+$$\text{log}(P(y|p)) =  \sum_{i = 1}^N log(p^{s_i}) + \log( (1-p)^{1-s_i}).$$
+
+Two key takeaways. 
+First, notice how the product now became a summation. 
+Second, $x \times 1 = x$ and now $x + \text{log(1)} = x + 0 = x$
+
+MacKenzie et al. covers these calculations for occupancy models in chapter 4 of their book. 
 
 
 # Two-level occupancy models
@@ -485,7 +532,7 @@ Now that we've simulated the data, we can use it with our model as called by `st
 ```r
 ## Fit the model in stan
 
-fitWide <- stan('../simpleModelExamples/occupancy.stan',
+fitWide <- stan('./occupancy.stan',
                 data = simpleModelInput)
 
 fitWide
@@ -578,7 +625,7 @@ This model is fit the same as previous model.
 
 ```r
 ## Fit the model using parameters on the mu scale
-fitWideMu <- stan('../simpleModelExamples/occupancyMu.stan',
+fitWideMu <- stan('./occupancyMu.stan',
                   data = simpleModelInput)
 
 fitWideMu
@@ -666,7 +713,7 @@ We can then fit this model using Rstan and look at the results, which are simila
 
 
 ```r
-fitWideMuBinomial <- stan('../simpleModelExamples/occupancyMuBinomial.stan',
+fitWideMuBinomial <- stan('./occupancyMuBinomial.stan',
                           data = stanSumationData)
 
 fitWideMuBinomial
@@ -816,11 +863,15 @@ Also, this model did not calculate probabilities because of the coefficients.
 
 ```r
 ## Fit long form model 
-fitWideMuLong <- stan('../simpleModelExamples/bernoulli-occupancy.stan',
+fitWideMuLong <- stan('./bernoulli-occupancy.stan',
                       data= stan_d,
                       chains = 4, iter = 2000)
 
 print(fitWideMuLong, pars = c("beta_psi", "beta_p"))
+
+##              mean se_mean   sd  2.5%   25%   50%   75% 97.5% n_eff Rhat
+## beta_psi[1] -0.52       0 0.13 -0.78 -0.60 -0.51 -0.43 -0.27  3909    1
+## beta_p[1]    0.39       0 0.07  0.25  0.34  0.39  0.43  0.51  3393    1
 ```
 
 And the outputs from the model are similar to the other models.
@@ -857,4 +908,366 @@ plogis(0.39)
 
 ```
 ## [1] 0.5962827
+```
+
+
+# eDNA-based occupancy models
+
+
+
+Sub-sampling
+
+## Background on eDNA-based sampling 
+
+Three levels of detection. 
+Terminology and algebra.  
+[Dorazio and Erickson (2017)](https://doi.org/10.1111/1755-0998.12735) provide a quick overview of the literature. 
+
+## Statistical challenges 
+
+## Overview of problem 
+
+### Stan model 
+
+### Simulating data 
+
+
+```r
+library(rstan)
+```
+
+```
+## Loading required package: ggplot2
+```
+
+```
+## Loading required package: StanHeaders
+```
+
+```
+## rstan (Version 2.17.3, GitRev: 2e1f913d3ca3)
+```
+
+```
+## For execution on a local, multicore CPU with excess RAM we recommend calling
+## options(mc.cores = parallel::detectCores()).
+## To avoid recompilation of unchanged Stan programs, we recommend calling
+## rstan_options(auto_write = TRUE)
+```
+
+```r
+library(data.table)
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
+```
+
+
+
+```r
+set.seed(12345)
+nSites       = 100
+nSamples     = 10
+k            = 8
+totalSamples = nSites * nSamples
+psi   = 0.8
+theta = 0.6
+p     = 0.3
+```
+
+
+```r
+siteLevelData <- data.table(
+    site  = 1:nSites,
+    zSim  = rbinom(nSites, 1, psi))
+
+sampleLevelData <-  data.table(
+    site   = rep(1:nSites, each = nSamples),
+    sample = rep(1:nSamples, times = nSites),
+    theta = theta, 
+    p = p,
+    k = k
+)
+
+setkey(siteLevelData, "site")
+setkey(sampleLevelData, "site")
+dataUse <- siteLevelData[ sampleLevelData]
+```
+
+
+```r
+## was eDNA captured in sample?
+dataUse[ , aSim := zSim * rbinom(n = nrow(dataUse), size = 1, p = theta)]
+## was eDNA detected in sample?
+dataUse[ , y := rbinom(n = nrow(dataUse), size = k, p = aSim * p)]
+## Calculate observed a and z
+dataUse[ ,  aObs := ifelse(y > 0, 1, 0)]
+dataUse[ ,  zObs := ifelse(sum(aSim) > 0, 1, 0), by = .(site)]
+```
+
+
+```r
+psi
+```
+
+```
+## [1] 0.8
+```
+
+```r
+dataUse[ , mean(zSim)]
+```
+
+```
+## [1] 0.8
+```
+
+```r
+dataUse[ , mean(zObs)]
+```
+
+```
+## [1] 0.8
+```
+
+```r
+theta
+```
+
+```
+## [1] 0.6
+```
+
+```r
+dataUse[ zObs > 0, mean(aSim)]
+```
+
+```
+## [1] 0.56375
+```
+
+```r
+dataUse[ zObs > 0, mean(aObs)]
+```
+
+```
+## [1] 0.54125
+```
+
+```r
+p
+```
+
+```
+## [1] 0.3
+```
+
+```r
+dataUse[ aObs > 0, mean(y/k)]
+```
+
+```
+## [1] 0.3262125
+```
+
+
+```r
+siteSummary <- dataUse[ , .(a = ifelse(sum(y) >0, 1, 0), .N, sumY = sum(y),
+                            z = ifelse(sum(zObs) >0, 1, 0)), by = site]
+head(siteSummary)
+```
+
+```
+##    site a  N sumY z
+## 1:    1 1 10   10 1
+## 2:    2 0 10    0 0
+## 3:    3 1 10   17 1
+## 4:    4 0 10    0 0
+## 5:    5 1 10   12 1
+## 6:    6 1 10   12 1
+```
+
+
+```r
+Xpsi <- model.matrix( ~ 1, data = siteSummary)
+nPsiCoef = dim(Xpsi)[2]
+
+Vp <- model.matrix( ~ 1, data = dataUse)
+nPCoef <- dim(Vp)[2]
+dataUse[ , index:=1:nrow(dataUse)]
+```
+
+
+```r
+startStop <- dataUse[ , .(start_idx = min(index),
+                          end_idx = max(index)), by = site]
+```
+
+
+```r
+y <- dataUse[ , y]
+aObs <- dataUse[ , aObs]
+k <- dataUse[ , k]
+zObs = siteSummary[ , z]
+startIndex <- startStop[ , start_idx]
+endIndex   <- startStop[ , end_idx]
+
+
+stanData <- list(nSites = nSites,
+                 nPsiCoef = nPsiCoef,
+                 Xpsi = Xpsi,
+                 totalSamples = nrow(dataUse),
+                 nPCoef = nPCoef,
+                 nThetaCoef = nPCoef,
+                 Vp = Vp,
+                 Wtheta = Vp,
+                 y = y,
+                 k = k,
+                 zObs = siteSummary[ , z],
+                 startIndex = startIndex,
+                 endIndex = endIndex,
+                 nSamples = siteSummary[ , N],
+                 aObs = dataUse[, aObs]
+                 )
+```
+
+
+```r
+fit <- stan('../ChaptersCode/eDNAOccupancy/eDNAoccupancy.stan',
+                      data= stanData,
+                      chains = 4, iter = 200)
+fitSummary <- summary(fit)$summary
+```
+
+
+
+```r
+traceplot(fit, pars = c("beta_psi", "beta_theta", "beta_p",  "lp__"), inc_warmup = FALSE)
+```
+
+![](OccupancyStanIntroduction_files/figure-html/examineTracePlot-1.png)<!-- -->
+
+
+```r
+plot(fit, pars = c("beta_psi", "beta_theta", "beta_p")) 
+```
+
+```
+## ci_level: 0.8 (80% intervals)
+```
+
+```
+## outer_level: 0.95 (95% intervals)
+```
+
+![](OccupancyStanIntroduction_files/figure-html/examineResults-1.png)<!-- -->
+
+```r
+print(fit, pars = c("beta_psi", "beta_theta", "beta_p",  "lp__"))
+```
+
+```
+## Inference for Stan model: eDNAoccupancy.
+## 4 chains, each with iter=200; warmup=100; thin=1; 
+## post-warmup draws per chain=100, total post-warmup draws=400.
+## 
+##                  mean se_mean   sd    2.5%     25%     50%     75%   97.5%
+## beta_psi[1]      1.33    0.02 0.25    0.89    1.14    1.33    1.51    1.85
+## beta_theta[1]    0.43    0.01 0.17    0.08    0.33    0.44    0.54    0.74
+## beta_p[1]       -0.78    0.00 0.08   -0.94   -0.83   -0.78   -0.72   -0.61
+## lp__          -356.74    0.13 1.40 -360.45 -357.27 -356.37 -355.72 -355.17
+##               n_eff Rhat
+## beta_psi[1]     147 1.00
+## beta_theta[1]   265 0.99
+## beta_p[1]       400 1.01
+## lp__            122 1.03
+## 
+## Samples were drawn using NUTS(diag_e) at Fri Sep 14 10:44:47 2018.
+## For each parameter, n_eff is a crude measure of effective sample size,
+## and Rhat is the potential scale reduction factor on split chains (at 
+## convergence, Rhat=1).
+```
+
+
+```r
+print(dataUse[ , mean(zSim)])
+```
+
+```
+## [1] 0.8
+```
+
+```r
+print(dataUse[ , mean(zObs)])
+```
+
+```
+## [1] 0.8
+```
+
+```r
+print(round(plogis(fitSummary[grep("beta_psi", rownames(fitSummary)), c(4,1,8)] ), 2))
+```
+
+```
+##  2.5%  mean 97.5% 
+##  0.71  0.79  0.86
+```
+
+```r
+print(theta)
+```
+
+```
+## [1] 0.6
+```
+
+```r
+print(dataUse[ zObs > 0, mean(aSim)])
+```
+
+```
+## [1] 0.56375
+```
+
+```r
+print(dataUse[ zObs > 0, mean(aObs)])
+```
+
+```
+## [1] 0.54125
+```
+
+```r
+print(round(plogis(fitSummary[grep("beta_theta", rownames(fitSummary)), c(4,1,8)] ), 2))
+```
+
+```
+##  2.5%  mean 97.5% 
+##  0.52  0.60  0.68
+```
+
+```r
+print(p)
+```
+
+```
+## [1] 0.3
+```
+
+```r
+print(dataUse[ aObs > 0, mean(y/k)])
+```
+
+```
+## [1] 0.3262125
+```
+
+```r
+print(round(plogis(fitSummary[grep("beta_p", rownames(fitSummary)), c(4,1,8)] ), 2))
+```
+
+```
+##             2.5% mean 97.5%
+## beta_psi[1] 0.71 0.79  0.86
+## beta_p[1]   0.28 0.31  0.35
 ```

@@ -164,7 +164,7 @@ The follow example demonstrates how it may be used on a simple factor data.frame
 ```{r demoMM, eval = TRUE}
 ```
 
-Several things to notice.
+Things to notice about `model.matrix()`:
 
 1.  `model.matrix()` converted city to an alphabetical order factor.
 2.  The first factor is the first in alphabetically. This order may be [changing the factor order in R](http://lmgtfy.com/?q=change+r+factor+order).
@@ -217,3 +217,39 @@ But, look at what happens if we try and convert `occ` to a binary response:
 ```
 
 Now that you've had a crash course on R topics, let's build our first occupancy model with Stan. 
+
+## Review of log rules and probability 
+
+As you see in the upcoming chapters, Stan requires marginalizing out discrete latent variables. 
+This requires working with probabilities. 
+Probabilities are often log transformed to increase numerical stability (or, informally: make the equations easier for the computer to solve) AND to change from multiplication to addition. 
+Here are some quick refreshers of log rules:
+
+- $\text{log}(xy) = \text{log}(x) + \text{log}(y)$
+- $\text{log}(0) = 1$
+
+
+For example, let's say we flip a coin once.
+The coin has probability $p$ of heads and probability $1-p$ of tails.  
+We get a heads, which we call 1. 
+If we flip the coin 4 times, our outcome could be 1001. 
+The probability of this occurring would be: $p(1-p)(1-p)p$. 
+The product may be denoted using the product operator $\prod$ (much like $\sum$ is used for summation) and generalized.  
+We have $N$ trials and we index over $i$. 
+Trials with heads are considered _successes_, which is denoted with a superscript $s$ = 1. 
+Trials with tails have $s = 0$. 
+These superscripts make the terms either be themselves (e.g., $p^1 = p$) or 1 (e.g., $p^0 = 1$). 
+We can write the probability of the event occurring as $P(y|p)$, which is read as the probability of observation $y$ give probability $p$. 
+This leads to the formulation:
+
+$$P(y|p) =  \prod_{i = 1}^N p^{s_i} (1-p)^{1-s_i}.$$
+
+Taking the log of this gives 
+
+$$\text{log}(P(y|p)) =  \sum_{i = 1}^N log(p^{s_i}) + \log( (1-p)^{1-s_i}).$$
+
+Two key takeaways. 
+First, notice how the product now became a summation. 
+Second, $x \times 1 = x$ and now $x + \text{log(1)} = x + 0 = x$
+
+MacKenzie et al. covers these calculations for occupancy models in chapter 4 of their book. 

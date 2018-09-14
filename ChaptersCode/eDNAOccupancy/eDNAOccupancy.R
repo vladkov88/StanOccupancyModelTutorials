@@ -1,13 +1,14 @@
 ## Code for Chapter on eDNA Occupancy modeling
 
 ## Load required packages
+## @knitr stanSettings
 library(rstan)
 library(data.table)
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
 
+## @knitr inputSettings
 set.seed(12345)
-## Simulate data 
 nSites       = 100
 nSamples     = 10
 k            = 8
@@ -16,10 +17,10 @@ psi   = 0.8
 theta = 0.6
 p     = 0.3
 
+## @knitr siteAndSampleDetails
 siteLevelData <- data.table(
     site  = 1:nSites,
     zSim  = rbinom(nSites, 1, psi))
-siteLevelData
 
 sampleLevelData <-  data.table(
     site   = rep(1:nSites, each = nSamples),
@@ -31,9 +32,9 @@ sampleLevelData <-  data.table(
 
 setkey(siteLevelData, "site")
 setkey(sampleLevelData, "site")
-
 dataUse <- siteLevelData[ sampleLevelData]
-dataUse
+
+## @knitr simulateSampling
 ## was eDNA captured in sample?
 dataUse[ , aSim := zSim * rbinom(n = nrow(dataUse), size = 1, p = theta)]
 ## was eDNA detected in sample?
@@ -41,10 +42,9 @@ dataUse[ , y := rbinom(n = nrow(dataUse), size = k, p = aSim * p)]
 ## Calculate observed a and z
 dataUse[ ,  aObs := ifelse(y > 0, 1, 0)]
 dataUse[ ,  zObs := ifelse(sum(aSim) > 0, 1, 0), by = .(site)]
-dataUse[ aObs != aSim,]
 
 
-
+## @knitr examineSimulatedValues
 psi
 dataUse[ , mean(zSim)]
 dataUse[ , mean(zObs)]
@@ -57,27 +57,32 @@ p
 dataUse[ aObs > 0, mean(y/k)]
 
 
+## @knitr siteSummary
 siteSummary <- dataUse[ , .(a = ifelse(sum(y) >0, 1, 0), .N, sumY = sum(y),
                             z = ifelse(sum(zObs) >0, 1, 0)), by = site]
-siteSummary
-## Create predictor matricies 
+head(siteSummary)
+
+## @knitr predictorMatricies
 Xpsi <- model.matrix( ~ 1, data = siteSummary)
 nPsiCoef = dim(Xpsi)[2]
 
 Vp <- model.matrix( ~ 1, data = dataUse)
 nPCoef <- dim(Vp)[2]
-## nThetaCoef
-## Wtheta
 dataUse[ , index:=1:nrow(dataUse)]
+
+## @knitr startStopIndex
 startStop <- dataUse[ , .(start_idx = min(index),
                           end_idx = max(index)), by = site]
+
+
+## @knitr formatDataStan
 y <- dataUse[ , y]
 aObs <- dataUse[ , aObs]
 k <- dataUse[ , k]
 zObs = siteSummary[ , z]
-
 startIndex <- startStop[ , start_idx]
 endIndex   <- startStop[ , end_idx]
+
 
 stanData <- list(nSites = nSites,
                  nPsiCoef = nPsiCoef,
@@ -96,35 +101,32 @@ stanData <- list(nSites = nSites,
                  aObs = dataUse[, aObs]
                  )
 
-
-fitWideMuLong <- stan('./eDNAoccupancy.stan',
+## @knitr runStan
+fit <- stan('../ChaptersCode/eDNAOccupancy/eDNAoccupancy.stan',
                       data= stanData,
-                      chains = 4, iter = 2000)
+                      chains = 4, iter = 200)
+fitSummary <- summary(fit)$summary
 
-traceplot(fitWideMuLong, pars = c("beta_psi", "beta_theta", "beta_p",  "lp__"), inc_warmup = TRUE)
-traceplot(fitWideMuLong, pars = c("beta_psi", "beta_theta", "beta_p",  "lp__"), inc_warmup = FALSE)
+## @knitr examineTracePlot
+traceplot(fit, pars = c("beta_psi", "beta_theta", "beta_p",  "lp__"), inc_warmup = FALSE)
 
-## fitWideMuLong
-plot(fitWideMuLong, pars = c("beta_psi", "beta_theta", "beta_p")) 
+## @knitr examineResults
+plot(fit, pars = c("beta_psi", "beta_theta", "beta_p")) 
+print(fit, pars = c("beta_psi", "beta_theta", "beta_p",  "lp__"))
 
-gc()
-print(fitWideMuLong, pars = c("beta_psi", "beta_theta", "beta_p",  "lp__"))
+## @knitr comareOutputs
+print(dataUse[ , mean(zSim)])
+print(dataUse[ , mean(zObs)])
+print(round(plogis(fitSummary[grep("beta_psi", rownames(fitSummary)), c(4,1,8)] ), 2))
 
-psi
-dataUse[ , mean(zSim)]
-dataUse[ , mean(zObs)]
-plogis(1.32)
+print(theta)
+print(dataUse[ zObs > 0, mean(aSim)])
+print(dataUse[ zObs > 0, mean(aObs)])
+print(round(plogis(fitSummary[grep("beta_theta", rownames(fitSummary)), c(4,1,8)] ), 2))
 
-
-theta
-dataUse[ zObs > 0, mean(aSim)]
-dataUse[ zObs > 0, mean(aObs)]
-plogis(0.43)
-
-p
-dataUse[ aObs > 0, mean(y/k)]
-plogis(-0.77)
-
+print(p)
+print(dataUse[ aObs > 0, mean(y/k)])
+print(round(plogis(fitSummary[grep("beta_p", rownames(fitSummary)), c(4,1,8)] ), 2))
     
 
 

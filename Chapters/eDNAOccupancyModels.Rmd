@@ -1,3 +1,62 @@
 # eDNA-based occupancy models
 
-eDNA-based sampling requires the con
+
+```{r echo=FALSE}
+knitr::read_chunk('../ChaptersCode/eDNAOccupancy/eDNAoccupancy.R')
+```
+Sub-sampling
+
+## Background on eDNA-based sampling 
+
+Three levels of detection. 
+Terminology and algebra.  
+[Dorazio and Erickson (2017)](https://doi.org/10.1111/1755-0998.12735) provide a quick overview of the literature. 
+
+## Statistical challenges 
+
+## Overview of problem 
+
+### Stan model 
+
+### Simulating data 
+
+```{r stanSettings, eval = TRUE}
+```
+
+
+```{r inputSettings, eval = TRUE}
+```
+
+```{r siteAndSampleDetails, eval = TRUE}
+```
+
+```{r simulateSampling, eval = TRUE}
+```
+
+```{r examineSimulatedValues, eval = TRUE}
+```
+
+```{r siteSummary, eval = TRUE}
+```
+
+```{r predictorMatricies, eval = TRUE}
+```
+
+```{r startStopIndex, eval = TRUE}
+```
+
+```{r formatDataStan, eval = TRUE}
+```
+
+```{r runStan, eval = TRUE, warning = FALSE, echo = TRUE}
+```
+
+
+```{r examineTracePlot, eval = TRUE}
+```
+
+```{r examineResults, eval = TRUE}
+```
+
+```{r comareOutputs, eval = TRUE}
+```
