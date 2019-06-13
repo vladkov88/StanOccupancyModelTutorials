@@ -20,7 +20,7 @@ output:
 
 This document provides an introduction to [occupancy models](https://www.nps.gov/olym/learn/nature/upload/OccupancyModelFactSheet.pdf) in [Stan](http://mc-stan.org/).
 The terms occupancy models and occurrence models can be used synonymous from a statistical and programming perspective, but can have important ecological differences from a scientific perspective. 
-Both terms are used interchangeably within this document unless specifically indicated that one term is appropriate for a specific location.
+Both terms are used interchangeably within this document unless specifically indicated that one term is appropriate for a specific use.
 
 ## Motivation 
 
@@ -31,8 +31,8 @@ However, compared to other Bayesian programs, Stan can offer better [performance
 ## Prerequisite knowledge and background 
 
 This tutorials assumes the reader is familiar with R, occupancy models, and Bayesian statistics. Some base knowledge of Stan would be helpful, even if it is just completing the schools "hello world" [example](https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started). 
-This work builds upon a previous [example tutorial](https://github.com/stan-dev/example-models/blob/master/misc/ecology/occupancy/occupancy.stan), which I helped to update. 
-Another [tutorial](http://mbjoseph.github.io/2014/11/14/stan_occ.html) I found did not use current Stan syntax. 
+This tutorial builds upon a previous [example tutorial](https://github.com/stan-dev/example-models/blob/master/misc/ecology/occupancy/occupancy.stan), which I helped to update. 
+Another [tutorial](https://mbjoseph.github.io/posts/2018-12-27-dynamic-occupancy-models-in-stan/) I found did not use current Stan syntax. 
 Last, [a multi-species tutorial exists](http://mc-stan.org/users/documentation/case-studies/dorazio-royle-occupancy.html), but is beyond the (current) scope of this tutorial 
 
 
@@ -54,9 +54,9 @@ This section provides a crash course on useful topics and code for using occupan
 ## A brief overview of occupancy models 
 
 Occupancy models allow for imperfect detection.
-For example, if I look out my back window and do not see a robin, why did I not see it?
+For example, if I look out my kitchen window and do not see a robin, why did I not see it?
 Maybe the bird was not there or maybe I missed it.
-If I look out my window on a regular basis, I could use an occupancy model to estimate my probability of detection.
+If I look out my kitchen window on a regular basis, I could use an occupancy model to estimate my probability of detection.
 Occupancy models can be extended to other situations with imperfect detection as well.
 
 ## Perfect detection: The logistic regression
@@ -76,12 +76,15 @@ Note, that if we want, we can fit the model using a probit link function rather 
 glm( y ~ x, family = binomial(link = 'probit'))
 ```
 
+
 Many [good tutorials exist on the differences between probits and logits](http://lmgtfy.com/?q=probit+vs+logit).
 Usually, the models produce similar results, although the logit has a slightly fatter tail. 
 Personally, I prefer logits if for no other reason than that is what my PhD advisor used.
+The reason for mentioning the logit versus probit is that we need to be explicit about our modeling assumption when moving on to Stan and knowing other options exist help see why. 
+
 
 The logit model may be also easily coded in Stan as well. 
-I would save this script as a `logisticStan.stan` (**Important note:** Stan models must end with `.stan` with a lower case `s`, otherwise the model will not be complied):
+I would save this script as a `logistic_stan.stan` (**Important note:** Stan models must end with `.stan` with a lower case `s`, otherwise the model will not be complied):
 
     data {
       int<lower=0> N;
@@ -97,44 +100,46 @@ I would save this script as a `logisticStan.stan` (**Important note:** Stan mode
     }
 
 
-After saving this code as `logisticStan.stan`, we can call the model from R. We'll simulate some data and format it to work with Stan here as well.
+After saving this code as `logistic_stan.stan`, we can call the model from R. We'll simulate some data and format it to work with Stan here as well.
 
 
 
 ```r
 library(rstan)
+options(mc.cores = parallel::detectCores())
 
 ### simulate and examine raw data
-nObs = 20
-xLabel <- factor(rep(c("a", "b"), times = nObs)) # used to Id variables
-xProb  <- rep(c(0.25, 0.75), times = nObs) # used to simulate data
-y <- rbinom(n = nObs * 2, size = 1, p = xProb)
-aggregate(y, by = list(xLabel), FUN = mean)
+n_obs = 20
+x_label <- factor(rep(c("a", "b"), times = n_obs)) # used to Id variables
+x_prob  <- rep(c(0.25, 0.75), times = n_obs) # used to simulate data
+y <- rbinom(n = n_obs * 2, size = 1, p = x_prob)
+aggregate(y, by = list(x_label), FUN = mean)
 
 ### First, we fit a GLM using base R
-glmOut <- glm(y ~ xLabel, family = 'binomial')
-summary(glmOut)
+glm_out <- glm(y ~ x_label, family = 'binomial')
+summary(glm_out)
 
 ### Second, we fit the model using Stan:
-stanData <- list(N = length(y),
-                 x = as.numeric(xLabel) - 1,
-                 y = y)
+stan_data <- list(N = length(y),
+                  x = as.numeric(x_label) - 1,
+                  y = y)
 
-stanOut <- stanOutO <- stan(file = "logisticStan.stan",
-                 data = stanData, chains = 4, iter = 500)
+stan_model <- stan_model(file = "logistic_stan.stan")
+
+stan_out <- sampling(stan_model, data = stan_data, chains = 4, iter = 500)
 
 ### Useful functions for looking at Stan outputs include:
-print(stanOut)
-traceplot(stanOut)
-traceplot(stanOut, inc_warmup = TRUE)
-plot(stanOut)
-pairs(stanOut)
+print(stan_out)
+traceplot(stan_out)
+traceplot(stan_out, inc_warmup = TRUE)
+plot(stan_out)
+pairs(stan_out)
 ```
 
 A few things to point out.
 
 1. Unlike base R, rstan does not have a nice wrapper function. This means we must use integers as the id variable each observation rather than characters or factors.
-2. You will want to increase the number of iterations when actually running the model for use. When troubleshooting, I use 100s. When running for publication, I use 1,000s to 10,000s.
+2. You will want to increase the number of iterations when actually running the model for use. When troubleshooting, I use 100s. When running for publication, I use 1,000s to 10,000s or more.
 3. Notice the Bayesian model diagnostics. If these are unfamiliar to you, I suggest working through BDA3 by Gelman et al. or other introductory Bayesian stats book. The [Shinystan](http://mc-stan.org/users/interfaces/shinystan) interface provides many different Bayesian diagnostics tools that work with Stan.
 
 
@@ -143,7 +148,7 @@ Because of this, and the details of how Stan works under the hood, we cannot use
 To introduce this topic, we will next look at using the probability `target` in Stan. 
 The `+=` opperator is a programming shortcut.
 For example `x = x + 2`, can be written as `x += 2`.
-Our code now looks like this and is saved in the file `logisticTargetStan.stan`:
+Our code now looks like this and is saved in the file `logistic_target_stan.stan`:
 
     data {
       int<lower=0> N; // Number of samples
@@ -166,7 +171,7 @@ First, unlike R or JAGS, Stan requires us to explicitly declare variables like C
 A downside is that the language can be less forgiving.
 An upside is that the language makes us be precise and makes it harder to "programming by coincidence".
 Rather than simply estimate parameters using a model, we must understand their data structure within the model.
-That being said, I've spend many an hour refreshing linear algebra to understand my Stan code and dimensions of objects.
+That being said, I've spend many an hour refreshing my linear algebra skills to understand my Stan code and dimensions of objects.
 But, the end products were code that I now trust and run quickly.
 
 Second, Stan uses code blocks.
@@ -178,28 +183,33 @@ Third, we can include comments with `//` or blocks of code with `/* comment here
 
 
 ```r
-stanOutTarget <- stan(file = "logisticTargetStan.stan",
-                      data = stanData, chains = 4, iter = 500)
+## Complie the model
+stan_model_target <- stan_model("logistic_target_stan.stan")
+
+## Sample from the model
+stan_out_target <- sampling(stan_model_target,
+                            data = stan_data, chains = 4,
+                            iter = 1000)
 
 ## Useful functions for looking at Stan outputs include:
-print(stanOutTarget, pars = c("alpha", "beta", "lp__"))
-traceplot(stanOutTarget, pars = c("alpha", "beta", "lp__"))
-traceplot(stanOutTarget, inc_warmup = TRUE, pars = c("alpha", "beta", "lp__"))
-plot(stanOutTarget, pars = c("alpha", "beta", "lp__"))
+print(stan_out_target, pars = c("alpha", "beta", "lp__"))
+traceplot(stan_out_target, pars = c("alpha", "beta", "lp__"))
+traceplot(stan_out_target, inc_warmup = TRUE, pars = c("alpha", "beta", "lp__"))
+plot(stan_out_target, pars = c("alpha", "beta", "lp__"))
 ```
 
-**Exercise**: Using the code above, fit a probit regression. You'll need to go to the Stan documentation to figure this out. 
+**Exercise**: Using the code above, fit a probit regression. You'll need to go to the Stan documentation to figure this out. This exercise will also likely take you 1 hr to a couple of days depending upon your abilities with Stan. 
 
 ## Binomial versus Bernoulii and long versus wide data
 
 Another important concept for occupancy modeling is data structure and probability distributions.
-The Bernoulli distribution produced one sampling event (often denoted as $K =1$).
+The Bernoulli distribution models  one sampling event (often denoted as $K =1$).
 For example, we might flip a coin once and record this as a data entry.
 The Bernoulli is a special case of a binomial distribution. 
 The binomial distribution allows us to have multiple sampling events. 
 For example, we might flip a coin 10 times and record the number of heads and tails as their own columns.
 
-For both general data analysis and occurrence modeling, I use both distributions. 
+For both general data analysis and occupancy modeling, I use both distributions. 
 When fitting a simple binomial GLM in R, my modeling choice depends upon the structure of the data.
 I use a Bernoulli style input (a vector of 0s and 1s for `y`) if my data has coefficients for each observation or the data was given to me in that format.
 I use a binomial style input if my data has been aggregated or I want to avoid [pseudoreplication](https://doi.org/10.2307/1942661) (e.g., the tank is the level of replication rather than the individual).
@@ -217,21 +227,27 @@ set.seed(1223)
 xSim <- rep(c(0.25, 0.75), each = 14)
 x <- rep(c("a", "b"), each = 14)
 y <- rbinom(n = length(xSim), size = 1, prob = xSim)
-dataLong <- data.frame(x = x, y = factor(y, labels = c("fail", "success")))
+data_long <-
+    data.frame(x = x,
+               y = factor(y, labels = c("fail", "success")))
 
-### cast the data to wide format using reshape2
-library(reshape2)
-dataWide <- dcast(dataLong, x ~ y)
-dataWide$Total <- with(dataWide, success + fail)
-dataWide$successProportion <- with(dataWide, success /Total)
-dataWide
+### cast the data to wide format using tidyverse
+library(tidyverse)
+data_wide <-
+    data_long %>%
+    group_by(x,y) %>%
+    summarize(N = n()) %>% 
+    spread( y, N) %>%
+    mutate(Total = success + fail,
+           success_proportion = success / (success + fail))
+data_wide
 
 ### Compare the three methods for fitting a logistic regression in R
-glm(y ~ x, family = 'binomial', data = dataLong)
+glm(y ~ x, family = 'binomial', data = data_long)
 
-glm(cbind(fail, success) ~ x, family = 'binomial', data = dataWide)
+glm(cbind(fail, success) ~ x, family = 'binomial', data = data_wide)
 
-glm(successProportion ~ x, family = 'binomial', data = dataWide,
+glm(success_proportion ~ x, family = 'binomial', data = data_wide,
     weights = Total)
 ```
 
@@ -239,15 +255,16 @@ For occurrence models in Stan, we must use the Bernoulli distribution (or Binomi
 Specifically, we need details about each replicate at a lower level.
 For example, We cannot aggregate and say that 3 sites had Robins and 2 sites did not. Instead, we need a vector of of these site-level detentions, for example `c(0, 1, 1, 0, 1, 1, 1)`.
 For the lowest level of the occurrence model, I often do use a Bernoulli distribution when I do not have coefficients at the observation-level because there are fewer data entries to aggregate over.
-We will see these 
+We will see these in later chapters. 
 
 ## Matrix notation and occupancy models
+
 
 Models in R such as `lm()` and `glm()` allow users to input [formuals](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/formula.html).
 Formulas allow users to input factors and have R convert them to a matrix of dummy variables. 
 [`model.matrix()`](http://stat.ethz.ch/R-manual/R-devel/library/stats/html/model.matrix.html) allows us to create these same type matrices of input variables. 
 There are several benefits to using `model.matrix()` to pre-process inputs for Stan.
-First, it allows us to easily turn factors into dummy variables.
+First, it allows us to easily turn factors into [dummy variables](https://en.wikipedia.org/wiki/Dummy_variable_(statistics)).
 Second, it allows us to easily have matrices of predictors, which in turn allows us to us matrix algebra within Stan. 
 This section introduces `model.matrix()` so that it will be familiar to us later. 
 **Note:** I use shorter matrices than most real applications to save screen space.
@@ -292,7 +309,7 @@ If we want an intercept for each factor level, we use a `- 1` in the notation.
 If we have multiple factors, we can only estimate intercepts for all of one of the factors. 
 For example, if we have months and city, we would need a reference month _or_ reference city. 
 Also, notice how order matters.
-Any decent advanced book on regression analysis explains this in greater detail (e.g., [Harrell](http://biostat.mc.vanderbilt.edu/wiki/Main/RmS) or [Gelman and Hill](http://www.stat.columbia.edu/~gelman/arm/)). 
+Most advanced book on regression analysis explains this in greater detail (e.g., [Harrell](http://biostat.mc.vanderbilt.edu/wiki/Main/RmS) or [Gelman and Hill](http://www.stat.columbia.edu/~gelman/arm/)). 
 
 
 ```r
@@ -351,15 +368,16 @@ For example, let's say we want to model occupancy for a lake and a river:
 
 ```r
 set.seed(12351513)
-dfocc <- data.frame(occ = factor(sample(rep(c("yes", "no"), each = 10))),
-                    site = factor(rep(c("lake", "river"), each = 10)))
+df_occ <-
+    data.frame(occ = factor(sample(rep(c("yes", "no"), each = 10))),
+               site = factor(rep(c("lake", "river"), each = 10)))
 ```
 
 Using Base R, we could just run `glm()` on this data:
 
 
 ```r
-summary(glm(occ ~ site, data = dfocc, family = 'binomial'))
+summary(glm(occ ~ site, data = df_occ, family = 'binomial'))
 ```
 
 But, look at what happens if we try and convert `occ` to a binary response:
@@ -367,17 +385,17 @@ But, look at what happens if we try and convert `occ` to a binary response:
 
 ```r
 ### base line 
-as.numeric(factor(dfocc$occ))
+as.numeric(factor(df_occ$occ))
 ### need -1 to create a vecor of zeros and ones
-as.numeric(factor(dfocc$occ)) - 1
+as.numeric(factor(df_occ$occ)) - 1
 ```
 
 Now that you've had a crash course on R topics, let's build our first occupancy model with Stan. 
 
 ## Review of log rules and probability 
 
-As you see in the upcoming chapters, Stan requires marginalizing out discrete latent variables. 
-This requires working with probabilities. 
+As you will see in the upcoming chapters, Stan requires marginalizing out discrete latent variables. 
+This requires working with probabilities.  
 Probabilities are often log transformed to increase numerical stability (or, informally: make the equations easier for the computer to solve) AND to change from multiplication to addition. 
 Here are some quick refreshers of log rules:
 
@@ -1067,15 +1085,19 @@ library(rstan)
 ```
 
 ```
-## Loading required package: ggplot2
-```
-
-```
 ## Loading required package: StanHeaders
 ```
 
 ```
-## rstan (Version 2.18.2, GitRev: 2e1f913d3ca3)
+## Registered S3 methods overwritten by 'ggplot2':
+##   method         from 
+##   [.quosures     rlang
+##   c.quosures     rlang
+##   print.quosures rlang
+```
+
+```
+## rstan (Version 2.18.9, GitRev: 2e1f913d3ca3)
 ```
 
 ```
@@ -1301,17 +1323,17 @@ print(fit, pars = c("beta_psi", "alpha_theta", "delta_p",  "lp__"))
 ## post-warmup draws per chain=100, total post-warmup draws=400.
 ## 
 ##                   mean se_mean   sd    2.5%     25%     50%     75%
-## beta_psi[1]       1.29    0.02 0.21    0.88    1.16    1.29    1.43
-## alpha_theta[1]    0.42    0.01 0.16    0.14    0.31    0.42    0.53
-## delta_p[1]       -0.78    0.00 0.08   -0.93   -0.83   -0.78   -0.73
-## lp__           -356.45    0.08 1.12 -359.01 -357.00 -356.21 -355.60
+## beta_psi[1]       1.32    0.02 0.24    0.84    1.15    1.33    1.48
+## alpha_theta[1]    0.43    0.01 0.15    0.13    0.33    0.43    0.53
+## delta_p[1]       -0.77    0.00 0.07   -0.92   -0.82   -0.78   -0.73
+## lp__           -356.44    0.07 1.11 -359.66 -357.00 -356.08 -355.64
 ##                  97.5% n_eff Rhat
-## beta_psi[1]       1.68   178 1.01
-## alpha_theta[1]    0.76   292 1.00
-## delta_p[1]       -0.62   529 0.99
-## lp__           -355.17   216 1.01
+## beta_psi[1]       1.82   140 1.01
+## alpha_theta[1]    0.70   324 1.00
+## delta_p[1]       -0.62   498 0.99
+## lp__           -355.19   221 1.01
 ## 
-## Samples were drawn using NUTS(diag_e) at Wed Feb  6 11:31:14 2019.
+## Samples were drawn using NUTS(diag_e) at Thu Jun 13 13:37:59 2019.
 ## For each parameter, n_eff is a crude measure of effective sample size,
 ## and Rhat is the potential scale reduction factor on split chains (at 
 ## convergence, Rhat=1).
@@ -1340,7 +1362,7 @@ print(round(plogis(fitSummary[grep("beta_psi", rownames(fitSummary)), c(4,1,8)] 
 
 ```
 ##  2.5%  mean 97.5% 
-##  0.71  0.78  0.84
+##  0.70  0.79  0.86
 ```
 
 ```r
@@ -1373,7 +1395,7 @@ print(round(plogis(fitSummary[grep("alpha_theta", rownames(fitSummary)), c(4,1,8
 
 ```
 ##  2.5%  mean 97.5% 
-##  0.54  0.60  0.68
+##  0.53  0.61  0.67
 ```
 
 ```r
@@ -1398,5 +1420,5 @@ print(round(plogis(fitSummary[grep("delta_p", rownames(fitSummary)), c(4,1,8)] )
 
 ```
 ##  2.5%  mean 97.5% 
-##  0.28  0.31  0.35
+##  0.28  0.32  0.35
 ```

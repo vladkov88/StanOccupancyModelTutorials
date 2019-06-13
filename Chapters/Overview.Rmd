@@ -2,7 +2,7 @@
 
 This document provides an introduction to [occupancy models](https://www.nps.gov/olym/learn/nature/upload/OccupancyModelFactSheet.pdf) in [Stan](http://mc-stan.org/).
 The terms occupancy models and occurrence models can be used synonymous from a statistical and programming perspective, but can have important ecological differences from a scientific perspective. 
-Both terms are used interchangeably within this document unless specifically indicated that one term is appropriate for a specific location.
+Both terms are used interchangeably within this document unless specifically indicated that one term is appropriate for a specific use.
 
 ## Motivation 
 
@@ -13,8 +13,8 @@ However, compared to other Bayesian programs, Stan can offer better [performance
 ## Prerequisite knowledge and background 
 
 This tutorials assumes the reader is familiar with R, occupancy models, and Bayesian statistics. Some base knowledge of Stan would be helpful, even if it is just completing the schools "hello world" [example](https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started). 
-This work builds upon a previous [example tutorial](https://github.com/stan-dev/example-models/blob/master/misc/ecology/occupancy/occupancy.stan), which I helped to update. 
-Another [tutorial](http://mbjoseph.github.io/2014/11/14/stan_occ.html) I found did not use current Stan syntax. 
+This tutorial builds upon a previous [example tutorial](https://github.com/stan-dev/example-models/blob/master/misc/ecology/occupancy/occupancy.stan), which I helped to update. 
+Another [tutorial](https://mbjoseph.github.io/posts/2018-12-27-dynamic-occupancy-models-in-stan/) I found did not use current Stan syntax. 
 Last, [a multi-species tutorial exists](http://mc-stan.org/users/documentation/case-studies/dorazio-royle-occupancy.html), but is beyond the (current) scope of this tutorial 
 
 
