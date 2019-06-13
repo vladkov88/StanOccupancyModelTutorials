@@ -915,21 +915,151 @@ plogis(0.39)
 
 
 
-Sub-sampling
+
+This chapter covers occupancy models with subsampling. 
+The motivating example are eDNA-based occupancy models. 
+Specifically, those with three levels: Site-level occupancy; Sample-level capture probabilities; and Molecular-level detection probabilities. 
+However, these models orated with ecological models with three-levels (e.g. sites, samples, and sub-samples) and this chapter could readily be applied to these models as well. 
+
+The chapter includes a brief overview and background on eDNA. 
+Then, the chapter covers the statistical challenges of occupancy models. 
+Next, the chapter covers a Stan model for three-levels. 
+Last, the chapter covers simulating data and fitting a Stan model to this data. 
 
 ## Background on eDNA-based sampling 
 
-Three levels of detection. 
-Terminology and algebra.  
-[Dorazio and Erickson (2017)](https://doi.org/10.1111/1755-0998.12735) provide a quick overview of the literature. 
+Most if not all organisms excrete DNA into their surroundings or environment. 
+This DNA is called environmental or eDNA. 
+Microbial and soil scientist have long used this DNA as a tool for detecting microbes in the soil because the method allows the detection of difficult to capture and culture species. 
+More recently, macro biologists discovered the power of sampling DNA. 
+We (the authors of this tutorial) have been motivated to examine the use eDNA as a monitoring tool for natural resource management, primarily driven to study and monitor aquatic invasive species. 
+
+When sampling for eDNA, occupancy models must account for at least one extra level of detection. 
+Most occupancy models examine the probability a site is occupied and the probability of detecting eDNA within that site. 
+In contrast, eDNA-based sampling possesses three levels:
+
+- The site-level occupancy probability of eDNA (e.g., is eDNA present at a site?);
+- The sample-level capture probability of eDNA (e.g., does this water sample contain eDNA?);
+- The molecular-level detection probability of eDNA  (e.g., did the PCR replicate detect eDNA?).
+
+Currently no standard terminology exists for eDNA-based occupancy models. 
+We based our terminology upon [Dorazio and Erickson (2017)](https://doi.org/10.1111/1755-0998.12735), who also provide a brief overview of the eDNA literature. 
+In general, we do not include indexing to simplify this tutorial, but this indexing allows for multiple seasons or sites or both to be sampled (e.g., one site may be visited multiple times, multiple sites may be visited once, or multiple sites may be visited multiple times). 
+Additionally, we use an inconsistent mix of scalar and matrix/vector notation. 
+
+![Conceptual figure of eDNA sampling process. Figure by Bob Kratt, USGS.](./Chapters/eDNA-tree.png)
+
+The first level of the model examines the occurrence of eDNA at a location. 
+For example if we either visit the same site multiple times or visit multiple sites once, what's the probability eDNA will occur at the site. 
+The binary state variable, $Z$, denotes the observation of eDNA at a location during a visit. 
+If $Z = 0$, people did not detect eDNA in any samples. 
+If $Z = 1$, people did detect eDNA in at least one sample from a visit to a site. 
+The probability, $\psi$, denotes the probability of eDNA occurring at a site. 
+These two are connected by a Bernoulli distribution: 
+
+$$ Z \sim \text{Bernoulli}(\psi). $$
+
+$\psi$ may include predictor variables $X$ and coefficients $\beta$. 
+The simplest case estimates one $\psi$ (i.e., a global intercept). 
+Alternatively, each site or season might have its own estimated probability (i.e., multiple intercepts) or we might have continuous or predictor variables (i.e., regression terms with multiple slopes and intercepts). 
+These are estimated on the logit scale:
+
+$$ logit(\psi) = \beta X. $$
+
+The second level of the model examines the capture of eDNA in a sample. 
+For example, if we collect multiple water samples at a site, what's the probability a sample contains eDNA? 
+Capturing eDNA within a sample requires eDNA to be present a site. 
+If $A = 1$, then at least one molecular replicate contained eDNA. 
+If $A = 0$, then no molecular replicate contained eDNA. 
+The probability, $\theta$, denotes the probability of eDNA occurring in a sample. 
+These two are connected by a Bernoulli distribution, but also include a conditional statement, "|". 
+
+$$ A \sim \text{Bernoulli}(\theta | Z ). $$
+
+Like $\psi$, $\theta$ is estimated on the logit scale and can include predictor variable: 
+
+$$ logit(\theta) = \alpha W. $$
+
+In this case, $W$ is the predictor matrix and $\alpha$ are the regression coefficients. 
+
+The third level of he model examines the detection of eDNA in a sample. 
+For example, did our PCR assay detect eDNA in a sample?
+Detecting eDNA within a sample requires eDNA to present within a sample. 
+If $Y = 1$, then eDNA was detected within a molecular replicate. 
+If $Y = 0$, then eDNA was not detected within a molecular replicate. 
+This level of the model is the only level without a latent state variable. 
+The probability, $p$ denote the probability of detecting eDNA within a sample. 
+For this probability, we use a binomial distribution with $K$ draws, with $K$ corresponding to the number of molecular replicates. 
+Thus, the two are connected by a binomial distribution:
+
+$$ Y \sim \text{Binomial}(p | A, K). $$ 
+
+Like the previous two probabilities, $p$ is estimated on the logit scale and can include predictor variables: 
+
+$$ logit(p) = \delta V. $$
+
+Here, $V$ is the predictor matrix and $\delta$ are the regression coefficients. 
 
 ## Statistical challenges 
 
-## Overview of problem 
+Fitting the model presents statically challenges. 
+From a numerical perspective, the model contains 2 levels of latent variables. 
+These present challenges for Stan, which can be overcome by taking the discritizing the model. 
+These are covered in the next section. 
+Detecting eDNA at a site also presents philosophical challenges. 
+What does the detection mean? 
+Is the species present or only its DNA? 
+Likewise, does the amount of eDNA correspond to the bioass or number of organisms present? 
+What about the detection probabilities? 
+These questions are beyond the scope of this tutorial, but are important as eDNA becomes an increasingly used tool. 
 
-### Stan model 
 
-### Simulating data 
+## Stan model 
+
+
+Define input variales, describe here 
+
+
+    data {
+      // site-level occupancy covariates
+      int<lower = 1> nSites;
+      int<lower = 1> nPsiCoef;
+      matrix[nSites, nPsiCoef] Xpsi;
+      
+      // sample-level detection covariates
+      int<lower = 1> totalSamples;
+      int<lower = 1> nPCoef;
+      int<lower = 1> nThetaCoef;
+      matrix[totalSamples, nPCoef] Vp;
+      matrix[totalSamples, nThetaCoef] Wtheta;
+    
+      // sample level information  
+      int<lower = 0> y[totalSamples];
+      int<lower = 0, upper = 1> aObs[totalSamples];
+      int<lower = 0> k[totalSamples];
+      int<lower = 0, upper = totalSamples> startIndex[nSites];
+      int<lower = 0, upper = totalSamples> endIndex[nSites];
+      
+      // summary of whether species is known to be present at each site
+      int<lower = 0, upper = 1> zObs[nSites];
+      
+      // number of samples at each site
+      int<lower = 0> nSamples[nSites];
+    }
+    parameters {
+      vector[nPsiCoef] beta_psi;
+      vector[nPCoef]   delta_p;
+      vector[nThetaCoef]   alpha_theta;
+    }
+    transformed parameters {
+      vector[totalSamples] logit_p     = Vp     * delta_p;
+      vector[totalSamples] logit_theta = Wtheta * alpha_theta;
+      vector[nSites] logit_psi         = Xpsi   * beta_psi;
+    }
+
+
+
+## Simulating data 
 
 
 ```r
@@ -945,7 +1075,7 @@ library(rstan)
 ```
 
 ```
-## rstan (Version 2.17.3, GitRev: 2e1f913d3ca3)
+## rstan (Version 2.18.2, GitRev: 2e1f913d3ca3)
 ```
 
 ```
@@ -1141,14 +1271,14 @@ fitSummary <- summary(fit)$summary
 
 
 ```r
-traceplot(fit, pars = c("beta_psi", "beta_theta", "beta_p",  "lp__"), inc_warmup = FALSE)
+traceplot(fit, pars = c("beta_psi", "alpha_theta", "delta_p",  "lp__"), inc_warmup = FALSE)
 ```
 
 ![](OccupancyStanIntroduction_files/figure-html/examineTracePlot-1.png)<!-- -->
 
 
 ```r
-plot(fit, pars = c("beta_psi", "beta_theta", "beta_p")) 
+plot(fit, pars = c("beta_psi", "alpha_theta", "delta_p")) 
 ```
 
 ```
@@ -1162,7 +1292,7 @@ plot(fit, pars = c("beta_psi", "beta_theta", "beta_p"))
 ![](OccupancyStanIntroduction_files/figure-html/examineResults-1.png)<!-- -->
 
 ```r
-print(fit, pars = c("beta_psi", "beta_theta", "beta_p",  "lp__"))
+print(fit, pars = c("beta_psi", "alpha_theta", "delta_p",  "lp__"))
 ```
 
 ```
@@ -1170,18 +1300,18 @@ print(fit, pars = c("beta_psi", "beta_theta", "beta_p",  "lp__"))
 ## 4 chains, each with iter=200; warmup=100; thin=1; 
 ## post-warmup draws per chain=100, total post-warmup draws=400.
 ## 
-##                  mean se_mean   sd    2.5%     25%     50%     75%   97.5%
-## beta_psi[1]      1.33    0.02 0.25    0.89    1.14    1.33    1.51    1.85
-## beta_theta[1]    0.43    0.01 0.17    0.08    0.33    0.44    0.54    0.74
-## beta_p[1]       -0.78    0.00 0.08   -0.94   -0.83   -0.78   -0.72   -0.61
-## lp__          -356.74    0.13 1.40 -360.45 -357.27 -356.37 -355.72 -355.17
-##               n_eff Rhat
-## beta_psi[1]     147 1.00
-## beta_theta[1]   265 0.99
-## beta_p[1]       400 1.01
-## lp__            122 1.03
+##                   mean se_mean   sd    2.5%     25%     50%     75%
+## beta_psi[1]       1.29    0.02 0.21    0.88    1.16    1.29    1.43
+## alpha_theta[1]    0.42    0.01 0.16    0.14    0.31    0.42    0.53
+## delta_p[1]       -0.78    0.00 0.08   -0.93   -0.83   -0.78   -0.73
+## lp__           -356.45    0.08 1.12 -359.01 -357.00 -356.21 -355.60
+##                  97.5% n_eff Rhat
+## beta_psi[1]       1.68   178 1.01
+## alpha_theta[1]    0.76   292 1.00
+## delta_p[1]       -0.62   529 0.99
+## lp__           -355.17   216 1.01
 ## 
-## Samples were drawn using NUTS(diag_e) at Fri Sep 14 10:44:47 2018.
+## Samples were drawn using NUTS(diag_e) at Wed Feb  6 11:31:14 2019.
 ## For each parameter, n_eff is a crude measure of effective sample size,
 ## and Rhat is the potential scale reduction factor on split chains (at 
 ## convergence, Rhat=1).
@@ -1210,7 +1340,7 @@ print(round(plogis(fitSummary[grep("beta_psi", rownames(fitSummary)), c(4,1,8)] 
 
 ```
 ##  2.5%  mean 97.5% 
-##  0.71  0.79  0.86
+##  0.71  0.78  0.84
 ```
 
 ```r
@@ -1238,12 +1368,12 @@ print(dataUse[ zObs > 0, mean(aObs)])
 ```
 
 ```r
-print(round(plogis(fitSummary[grep("beta_theta", rownames(fitSummary)), c(4,1,8)] ), 2))
+print(round(plogis(fitSummary[grep("alpha_theta", rownames(fitSummary)), c(4,1,8)] ), 2))
 ```
 
 ```
 ##  2.5%  mean 97.5% 
-##  0.52  0.60  0.68
+##  0.54  0.60  0.68
 ```
 
 ```r
@@ -1263,11 +1393,10 @@ print(dataUse[ aObs > 0, mean(y/k)])
 ```
 
 ```r
-print(round(plogis(fitSummary[grep("beta_p", rownames(fitSummary)), c(4,1,8)] ), 2))
+print(round(plogis(fitSummary[grep("delta_p", rownames(fitSummary)), c(4,1,8)] ), 2))
 ```
 
 ```
-##             2.5% mean 97.5%
-## beta_psi[1] 0.71 0.79  0.86
-## beta_p[1]   0.28 0.31  0.35
+##  2.5%  mean 97.5% 
+##  0.28  0.31  0.35
 ```

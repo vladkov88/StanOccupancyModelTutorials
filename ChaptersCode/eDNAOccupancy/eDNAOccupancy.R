@@ -108,11 +108,11 @@ fit <- stan('../ChaptersCode/eDNAOccupancy/eDNAoccupancy.stan',
 fitSummary <- summary(fit)$summary
 
 ## @knitr examineTracePlot
-traceplot(fit, pars = c("beta_psi", "beta_theta", "beta_p",  "lp__"), inc_warmup = FALSE)
+traceplot(fit, pars = c("beta_psi", "alpha_theta", "delta_p",  "lp__"), inc_warmup = FALSE)
 
 ## @knitr examineResults
-plot(fit, pars = c("beta_psi", "beta_theta", "beta_p")) 
-print(fit, pars = c("beta_psi", "beta_theta", "beta_p",  "lp__"))
+plot(fit, pars = c("beta_psi", "alpha_theta", "delta_p")) 
+print(fit, pars = c("beta_psi", "alpha_theta", "delta_p",  "lp__"))
 
 ## @knitr comareOutputs
 print(dataUse[ , mean(zSim)])
@@ -122,11 +122,11 @@ print(round(plogis(fitSummary[grep("beta_psi", rownames(fitSummary)), c(4,1,8)] 
 print(theta)
 print(dataUse[ zObs > 0, mean(aSim)])
 print(dataUse[ zObs > 0, mean(aObs)])
-print(round(plogis(fitSummary[grep("beta_theta", rownames(fitSummary)), c(4,1,8)] ), 2))
+print(round(plogis(fitSummary[grep("alpha_theta", rownames(fitSummary)), c(4,1,8)] ), 2))
 
 print(p)
 print(dataUse[ aObs > 0, mean(y/k)])
-print(round(plogis(fitSummary[grep("beta_p", rownames(fitSummary)), c(4,1,8)] ), 2))
+print(round(plogis(fitSummary[grep("delta_p", rownames(fitSummary)), c(4,1,8)] ), 2))
     
 
 

@@ -26,12 +26,12 @@ data {
 }
 parameters {
   vector[nPsiCoef] beta_psi;
-  vector[nPCoef]   beta_p;
-  vector[nPCoef]   beta_theta;
+  vector[nPCoef]   delta_p;
+  vector[nThetaCoef]   alpha_theta;
 }
 transformed parameters {
-  vector[totalSamples] logit_p     = Vp     * beta_p;
-  vector[totalSamples] logit_theta = Wtheta * beta_theta;
+  vector[totalSamples] logit_p     = Vp     * delta_p;
+  vector[totalSamples] logit_theta = Wtheta * alpha_theta;
   vector[nSites] logit_psi         = Xpsi   * beta_psi;
 }
 model {
@@ -44,9 +44,9 @@ model {
   vector[totalSamples] log_theta   = log_inv_logit(logit_theta);
   vector[totalSamples] log1m_theta = log1m_inv_logit(logit_theta);
   
-  beta_psi   ~ normal(0, 1);
-  beta_theta ~ normal(0, 1);
-  beta_p     ~ normal(0, 1);
+  beta_psi    ~ normal(0, 1);
+  alpha_theta ~ normal(0, 1);
+  delta_p      ~ normal(0, 1);
 
 
   for (site in 1:nSites) { 
