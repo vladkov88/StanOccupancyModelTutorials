@@ -8,7 +8,7 @@ knitr::read_chunk('../ChaptersCode/eDNAOccupancy/eDNAoccupancy.R')
 This chapter covers occupancy models with subsampling. 
 The motivating example are eDNA-based occupancy models. 
 Specifically, those with three levels: Site-level occupancy; Sample-level capture probabilities; and Molecular-level detection probabilities. 
-However, these models orated with ecological models with three-levels (e.g. sites, samples, and sub-samples) and this chapter could readily be applied to these models as well. 
+However, these models originated with ecological models with three-levels (e.g. sites, samples, and sub-samples) and this chapter could readily be applied to these models as well. 
 
 The chapter includes a brief overview and background on eDNA. 
 Then, the chapter covers the statistical challenges of occupancy models. 

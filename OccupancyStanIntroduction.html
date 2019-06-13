@@ -400,12 +400,13 @@ $(document).ready(function () {
 <li><a href="#review-of-log-rules-and-probability">Review of log rules and probability</a></li>
 </ul></li>
 <li><a href="#two-level-occupancy-models">Two-level occupancy models</a><ul>
-<li><a href="#a-simple-occupancy-model-in-stan">A simple occupancy model in Stan</a><ul>
+<li><a href="#simple-occupancy-model-overview">Simple occupancy model overview</a><ul>
 <li><a href="#matrix-input-occupancy-model">Matrix input occupancy model</a></li>
 <li><a href="#matrix-input-occupancy-model-on-logit-scale">Matrix input occupancy model on logit-scale</a></li>
 <li><a href="#binomial-input">Binomial input</a></li>
 <li><a href="#long-format-occupancy-model">Long format occupancy model</a></li>
 </ul></li>
+<li><a href="#summary">Summary</a></li>
 </ul></li>
 <li><a href="#edna-based-occupancy-models">eDNA-based occupancy models</a><ul>
 <li><a href="#background-on-edna-based-sampling">Background on eDNA-based sampling</a></li>
@@ -658,18 +659,25 @@ We have <span class="math inline">\(N\)</span> trials and we index over <span cl
 </div>
 <div id="two-level-occupancy-models" class="section level1">
 <h1>Two-level occupancy models</h1>
-<p>This chapter starts with a simple occupancy model that has one site with multiple observation points (e.g., cameras or traps). The first and simplest model directly estimates probabilities of detection and site occupancy. This model takes a site-by-visit (row of sites, columns of visits or surveys) matrix as the input. The second model then gets changed to estimate parameters on the logit-scale. The third model uses an input vector of the sum of number visits with detentions. The fourth model uses an input vector of binary observations for each visit to a site.</p>
-<div id="a-simple-occupancy-model-in-stan" class="section level2">
-<h2>A simple occupancy model in Stan</h2>
-<p>We will start by building a simple occupancy model that only includes a global intercept at each level. This example is based upon the Stan example provided by <a href="https://github.com/stan-dev/example-models/blob/master/misc/ecology/occupancy/occupancy.stan">Bob Carpenter</a>. The model would be appropriate for a single site with multiple visits or multiple sites with a single visit. This example either uses space or time for replication. The model assumes the same probability of detection for each observation. For simplicity, we will assume that a single site is revisited multiple times.</p>
-<p>The probability that the site is occupied is <span class="math inline">\(\psi\)</span> and is estimated on the logit scale: <span class="math inline">\(\mu_\psi\)</span>. <span class="math inline">\(\mu_\psi\)</span> is predicted by <span class="math inline">\(X \beta\)</span>. If a site is occupied during a visit, <span class="math inline">\(Z = 1\)</span>, otherwise, it would be zero. The probability of detection at a site is <span class="math inline">\(p\)</span> and is estimated on the logit scale: <span class="math inline">\(\mu_{p}\)</span>. <span class="math inline">\(\mu_\psi\)</span> is predicted by <span class="math inline">\(V \alpha\)</span>. The raw data for this would <span class="math inline">\(Y\)</span> where the index of <span class="math inline">\(Y\)</span> corresponds to the observation. <span class="math inline">\(Y\)</span> must be binary (i.e., 0s or 1s). Because we are estimating a single intercept, we only need a vector of 1s as our predictor matrix (or, in this case, scalar) <span class="math inline">\(X\)</span>. Note that we could simplify this model several ways (e.g., hard coding a single intercept, estimating on the probability scale rather than logit), but use the current formulation because we need these tools later either to extend the model or for numerical efficiency.</p>
+<p>This chapter builds up a series of two-level occupancy models in Stan. The models start simple and then build to more complicated models. The purpose of this is twofold. First, it provides an introduction and overview of these models. Second, the transformations buildup to allow for more complicated models such as those used for eDNA or other structures. For the purpose of this chapter we use the term <em>sampling unit</em> to refer to the observation. Sampling units can be replicated across space, time, or both.</p>
+<p>This chapter usesa simple occupancy model that has one site with multiple observation points (e.g., cameras or traps). This model is presented in four different forms:</p>
+<ol style="list-style-type: decimal">
+<li>The first and simplest model directly estimates probabilities of detection and occupancy. This model takes a site-by-visit (row of sites, columns of visits or surveys to each site) matrix as the input.</li>
+<li>The second model then gets changed to estimate parameters on the logit-scale.</li>
+<li>The third model uses an input vector of the sum of number visits with detentions.</li>
+<li>The fourth model uses an input vector of binary observations for each visit to a site.</li>
+</ol>
+<div id="simple-occupancy-model-overview" class="section level2">
+<h2>Simple occupancy model overview</h2>
+<p>We will start by building a simple occupancy model that only includes a global intercept at each level. This example is based upon the Stan example provided by <a href="https://github.com/stan-dev/example-models/blob/master/misc/ecology/occupancy/occupancy.stan">Bob Carpenter</a>. The model assumes the same probability of detection for each observation.</p>
+<p>The probability that any site is occupied is <span class="math inline">\(\psi\)</span> and is estimated on the logit scale: <span class="math inline">\(\mu_\psi\)</span>. <span class="math inline">\(\mu_\psi\)</span> is predicted by <span class="math inline">\(X \beta\)</span> (This is a <a href="https://en.wikipedia.org/wiki/Linear_regression">matrix regression notation</a>). If a site is occupied during a visit, <span class="math inline">\(Z = 1\)</span>, otherwise, it would be zero. During simulations, we simulate this value and it is known. With actual data, we have a <span class="math inline">\(Z_{obs}\)</span>. The probability of detection at a site is <span class="math inline">\(p\)</span> and is estimated on the logit scale: <span class="math inline">\(\mu_{p}\)</span>. <span class="math inline">\(\mu_\psi\)</span> is predicted by <span class="math inline">\(V \alpha\)</span>. The raw data for this would <span class="math inline">\(Y\)</span> where the index of <span class="math inline">\(Y\)</span> corresponds to the observation. <span class="math inline">\(Y\)</span> must be binary (i.e., 0s or 1s). Because we are estimating a single intercept, we only need a vector of 1s as our predictor matrix (or, in this case, scalar) <span class="math inline">\(X\)</span>. Note that we could simplify this model several ways (e.g., hard coding a single intercept, estimating on the probability scale rather than logit), but use the current formulation because we need these tools later either to extend the model or for numerical efficiency.</p>
 <div id="matrix-input-occupancy-model" class="section level3">
 <h3>Matrix input occupancy model</h3>
-<p>The simplest version of this model use The model in Stan contains three code blocks. The first is the <code>data</code> block:</p>
+<p>The model in Stan contains three code blocks. The first is the <code>data</code> block:</p>
 <pre><code>data {
-  int&lt;lower=0&gt; nSites;
-  int&lt;lower=0&gt; nSurveys;
-  int&lt;lower=0,upper=1&gt; y[nSites, nSurveys];
+  int&lt;lower=0&gt; n_sampling_units
+  int&lt;lower=0&gt; n_surveys;
+  int&lt;lower=0,upper=1&gt; y[n_sampling_units, n_surveys];
 }</code></pre>
 <p>which defines the input data into Stan. The second is the <code>parameters</code> block:</p>
 <pre><code>parameters {
@@ -689,7 +697,7 @@ We have <span class="math inline">\(N\)</span> trials and we index over <span cl
   p   ~ uniform(0,1);
   
   // likelihood
-  for (r in 1:nSites) {
+  for (r in 1:n_sampling_units) {
     if (sum(y[r]) &gt; 0)
       target += log_psi + bernoulli_lpmf(y[r] | p);
     else
@@ -701,32 +709,35 @@ We have <span class="math inline">\(N\)</span> trials and we index over <span cl
 <pre class="r"><code>## Simulate true occupancy states
 
 set.seed(1234)
-nSites &lt;- 250
-nSurveys &lt;- 10
+## number of sampling units 
+n_sampling_units &lt;- 250
+## visits per sampling unit 
+n_surveys &lt;- 10
 p &lt;- 0.6
 psi &lt;- 0.4
 
 ## simulate site-level occupancy
-z &lt;- rbinom( nSites, 1, psi)
+z &lt;- rbinom( n_sampling_units, 1, psi)
 
 ## simulate  sample-level detections 
-y &lt;- matrix( NA, nSites, nSurveys);
-for (site in 1:nSites)
-  y[site,] &lt;- rbinom( nSurveys, 1, z[site] * p);
+y &lt;- matrix( NA, n_sampling_units, n_surveys);
+for (site in 1:n_sampling_units){
+    y[site,] &lt;- rbinom( n_surveys, 1, z[site] * p)
+}
 
 
-simpleModelInput &lt;- list(nSites = nSites,
-                         nSurveys = nSurveys,
-                         y = y)</code></pre>
-<p><strong>Modeling building tip: </strong> When building a Stan model, I examine the raw data and make sure the Stan model matches the data. Although, this can be an iterative process, because I often discover my data requires wrangling to work with Stan. But, I start the iterative process with the data.</p>
-<p>Now that we’ve simulated the data, we can use it with our model as called by <code>stan()</code>.</p>
+simple_model_input &lt;- list(n_sampling_units = n_sampling_units,
+                           n_surveys = n_surveys,
+                           y = y)</code></pre>
+<p><strong>Modeling building tip: </strong> When building a Stan model, I examine the raw data and make sure the Stan model matches the data. Although, this can be an iterative process, because I often discover my data requires wrangling to work with Stan. In this process, I usually start the iterative process with the data because it is easier to work with.</p>
+<p>Now that we’ve simulated the data, we can use it with our model. First, we compile the model with <code>stan_model()</code>. Second, we sample from the model using <code>sampling()</code>.</p>
 <pre class="r"><code>## Fit the model in stan
 
-fitWide &lt;- stan(&#39;./occupancy.stan&#39;,
-                data = simpleModelInput)
+model_wide &lt;- stan_model(&#39;./occupancy.stan&#39;)
 
-fitWide</code></pre>
-<p>After fitting the model, we can look at the outputs. The default <code>print()</code> option for a <code>stanfit</code> object shows a summary of the model’s fit. In this case, typing <code>fitWdie</code> prints these results:</p>
+fit_wide &lt;- sampling(model_wide, simple_model_input)
+fit_wide</code></pre>
+<p>After fitting the model, we can look at the outputs. The default <code>print()</code> option for a <code>stanfit</code> object shows a summary of the model’s fit. In this case, typing <code>fit_wide</code> prints these results:</p>
 <pre class="r"><code>Inference for Stan model: occupancy.
 4 chains, each with iter=2000; warmup=1000; thin=1; 
 post-warmup draws per chain=1000, total post-warmup draws=4000.
@@ -769,7 +780,7 @@ convergence, Rhat=1).</code></pre>
   muPsi ~ normal(0, 2);
   
   // likelihood
-  for (r in 1:nSites) {
+  for (r in 1:n_sampling_units) {
     if (sum(y[r]) &gt; 0)
       target +=
     log_muPsi + bernoulli_logit_lpmf(y[r] | muP);
@@ -779,7 +790,7 @@ convergence, Rhat=1).</code></pre>
             bernoulli_logit_lpmf(y[r] | muP), log1m_muPsi);
   }
 }</code></pre>
-<p>We can transform the parameters to the logit scale to the probability scale in Stan using the <code>generated quantities</code> code block. This code block is complied so it is quick, but does not get run through MCMC algorithm.</p>
+<p>We can transform the parameters to the logit scale to the probability scale in Stan using the <code>generated quantities</code> code block. This code block is complied so it is quick, but does not get run through MCMC algorithm and slow down the model.</p>
 <pre><code>generated quantities{
   real&lt;lower = 0, upper = 1&gt; p;
   real&lt;lower = 0, upper = 1&gt; psi;
@@ -789,10 +800,10 @@ convergence, Rhat=1).</code></pre>
 }</code></pre>
 <p>This model is fit the same as previous model.</p>
 <pre class="r"><code>## Fit the model using parameters on the mu scale
-fitWideMu &lt;- stan(&#39;./occupancyMu.stan&#39;,
-                  data = simpleModelInput)
+model_wide_mu &lt;- stan_model(&#39;./occupancy_mu.stan&#39;)
 
-fitWideMu</code></pre>
+fit_wide_mu &lt;- sampling(model_wide_mu, data = simple_model_input)
+fit_wide_mu</code></pre>
 <p>The outputs are similar, other than having small numerical differences due to Monte Carlo variability. The output also include the <code>muP</code> and <code>muPsi</code> parameters.</p>
 <pre class="r"><code>Inference for Stan model: occupancyMu.
 4 chains, each with iter=2000; warmup=1000; thin=1; 
@@ -815,22 +826,23 @@ convergence, Rhat=1).</code></pre>
 <p>The previous example assumed that we had the same number of observations per site. One method to side-step this assumption is to use a binomial input rather than a Bernoulli. Now our input <code>y</code> is the number of surveys or visits where detections occurred and we need a new input <code>k</code>, which corresponds to the number of surveys per sites.</p>
 <p>We can summarize our data to be in the needed format and put it into a list for Stan.</p>
 <pre class="r"><code>## Now use summizations of the data
-ySum &lt;- apply(y, 1, sum)
+y_sum &lt;- apply(y, 1, sum)
 k &lt;- rep(dim(y)[2], dim(y)[1])
 
-stanSumationData &lt;- list(
-    nSites = nSites,
-    y = ySum,
-    k = k)</code></pre>
+stan_sumation_data &lt;-
+    list(
+        n_sampling_units = n_sampling_units,
+        y = y_sum,
+        k = k)</code></pre>
 <p>This formulation also changes the <code>data</code> block of the model:</p>
 <pre><code>data {
-  int&lt;lower=0&gt; nSites;
-  int&lt;lower=0&gt; y[nSites];
-  int&lt;lower=0&gt; k[nSites];
+  int&lt;lower=0&gt; n_sampling_units;
+  int&lt;lower=0&gt; y[n_sampling_units];
+  int&lt;lower=0&gt; k[n_sampling_units];
 }</code></pre>
 <p>As well as the likelihood portion of the <code>model</code>:</p>
 <pre><code>// likelihood
-  for (r in 1:nSites) {
+  for (r in 1:n_sampling_units) {
     if (y[r] &gt; 0)
       target +=
     log_muPsi + binomial_logit_lpmf(y[r] | k[r],  muP);
@@ -841,18 +853,21 @@ stanSumationData &lt;- list(
   }</code></pre>
 <p>Before we can fit the model, we need to sum and reformat our data our data:</p>
 <pre class="r"><code>## Now use summizations of the data
-ySum &lt;- apply(y, 1, sum)
+y_sum &lt;- apply(y, 1, sum)
 k &lt;- rep(dim(y)[2], dim(y)[1])
 
-stanSumationData &lt;- list(
-    nSites = nSites,
-    y = ySum,
-    k = k)</code></pre>
+stan_sumation_data &lt;-
+    list(
+        n_sampling_units = n_sampling_units,
+        y = y_sum,
+        k = k)</code></pre>
 <p>We can then fit this model using Rstan and look at the results, which are similar to the previous results:</p>
-<pre class="r"><code>fitWideMuBinomial &lt;- stan(&#39;./occupancyMuBinomial.stan&#39;,
-                          data = stanSumationData)
+<pre class="r"><code>stan_model_mu_binomial  &lt;- stan_model(&#39;./occupancy_mu_binomial.stan&#39;)
 
-fitWideMuBinomial</code></pre>
+fit_mu_binomial &lt;- sampling(stan_model_mu_binomial,
+                            data = stan_sumation_data)
+
+fit_mu_binomial</code></pre>
 <pre class="r"><code>Inference for Stan model: occupancyMuBinomial.
 4 chains, each with iter=2000; warmup=1000; thin=1; 
 post-warmup draws per chain=1000, total post-warmup draws=4000.
@@ -871,34 +886,45 @@ convergence, Rhat=1).</code></pre>
 </div>
 <div id="long-format-occupancy-model" class="section level3">
 <h3>Long format occupancy model</h3>
-<p>What if our data is in a “long format” with one row per survey or visit per site? Then, we can build a model, but it is trickier. I received help from <a href="https://discourse.mc-stan.org/t/identifiability-across-levels-in-occupancy-model/5340">Max Joseph on the Stan user forum</a> who wrote this model. Before diving into the Stan code, the data needs to mutated to be the correct shape. I use the <code>data.table</code> package to do this. Most people would probably use the <code>tidyverse</code> packages. One key part of this code is creating the index of start and stopping numbers for each survey.</p>
+<p>What if our data is in a “long format” with one row per survey and sampling unit? Then, we can build a model, but it is trickier. I received help from <a href="https://discourse.mc-stan.org/t/identifiability-across-levels-in-occupancy-model/5340">Max Joseph on the Stan user forum</a> who wrote this model. Before diving into the Stan code, the data needs to mutated to be the correct shape. I use the <code>Tidyverse</code> for this. One key part of this code is creating the index of start and ending numbers numbers for each survey.</p>
 <pre class="r"><code>## Convert to long format
-library(data.table)
-yDT &lt;- data.table(y)
-yDT[ , site := factor(1:nSites)]
-yDT[ , z := z]
+y_df &lt;- 
+    y %&gt;%
+    as.data.frame() %&gt;%
+    mutate(site = factor(1:n_sampling_units),
+           z_obs = ifelse(rowSums(y) &gt;0, 1, 0))
 
-yDTlong &lt;- melt(yDT, id.vars = c(&quot;site&quot;, &quot;z&quot;),
-                variable.name = &quot;visit&quot;,
-                value.name = &quot;y&quot;)
-yDTlong &lt;- yDTlong[ order(site)]
-yDTlong[ , index := 1:nrow(yDTlong)]
-yDTlong[ , zObs := ifelse(sum(y) &gt;= 1, 1, 0), by = .(site)]
+y_long &lt;-
+    y_df %&gt;%
+    gather(survey, y,  -site, -z_obs) %&gt;%
+    arrange(site) %&gt;%
+    mutate(index = 1:nrow(y_long))
 
-yDTlongSummary &lt;-
-    yDTlong [ , .(any_seen = ifelse(sum(y) &gt;0, 1, 0), .N), by = site]
+head(y_long, 12)
+tail(y_long, 12)
 
-X_psi &lt;-  model.matrix( ~ 1, data = yDTlongSummary)
-n_site &lt;- yDTlong[ , length(unique(site))]
-m_psi &lt;- dim(X_psi)[2]
+y_long_summary &lt;-
+    y_long %&gt;%
+    group_by(site) %&gt;%
+    summarize(any_seen = ifelse(sum(y) &gt;0, 1, 0),
+              N = n())
 
-total_surveys &lt;- dim(yDTlong)[1]
+X_psi  &lt;-  model.matrix( ~ 1, data = y_long_summary)
+n_site &lt;- y_long %&gt;% pull(site) %&gt;% unique() %&gt;% length()
+m_psi  &lt;- ncol(X_psi)
 
-X_p &lt;- model.matrix( ~ 1, data = yDTlong)
-m_p &lt;- dim(X_p)[2]
-startStop &lt;- yDTlong[ , .(start_idx = min(index),
-                          end_idx = max(index)), by = site]
-site = yDTlong[ , as.numeric(site)]
+total_surveys &lt;- nrow(y_long)
+
+X_p &lt;- model.matrix( ~ 1, data = y_long)
+m_p &lt;- ncol(X_p)
+    
+start_end &lt;-
+    y_long %&gt;%
+    group_by(site) %&gt;%
+    summarize(start_idx = min(index),
+              end_idx = max(index))
+
+site = y_long %&gt;% pull(site) %&gt;% as.numeric()
 
 stan_d &lt;- list(
     n_site = n_site,
@@ -908,17 +934,18 @@ stan_d &lt;- list(
     m_p = m_p, 
     X_p = X_p, 
     site = site,
-    y = yDTlong[ , y],
-    start_idx = startStop[ , start_idx], 
-    end_idx = startStop[ , end_idx], 
-    any_seen = yDTlongSummary[ , any_seen], 
-    n_survey = yDTlongSummary[ , N])</code></pre>
+    y = y_long %&gt;% pull(y),
+    start_idx = start_end %&gt;% pull( start_idx),
+    end_idx = start_end %&gt;% pull( end_idx),  
+    any_seen = y_long_summary %&gt;% pull(any_seen), 
+    n_survey = y_long_summary %&gt;% pull(N)
+    )</code></pre>
 <p>The code for this Stan model become more complicated. First, we cannot simply loop over raw observations. Instead, we need to “cut” out the observations for each survey (site visit). This model also includes the ability to include coefficients at different levels, but these will not be discussed until the next section. These coefficient include matrices of predictors. These are same type that are created by <code>model.matrix()</code>.</p>
 <pre><code>data {
   // site-level occupancy covariates
-  int&lt;lower = 1&gt; nSites;
+  int&lt;lower = 1&gt; n_sampling_units;
   int&lt;lower = 1&gt; nPsiCoef;
-  matrix[nSites, nPsiCoef] Xpsi;
+  matrix[n_sampling_units, nPsiCoef] Xpsi;
   
   // survey-level detection covariates
   int&lt;lower = 1&gt; totalSurveys;
@@ -926,16 +953,16 @@ stan_d &lt;- list(
   matrix[totalSurveys, nPCoef] Vp;
 
   // survey level information  
-  int&lt;lower = 1, upper = nSites&gt; site[totalSurveys];
+  int&lt;lower = 1, upper = n_sampling_units&gt; site[totalSurveys];
   int&lt;lower = 0, upper = 1&gt; y[totalSurveys];
-  int&lt;lower = 0, upper = totalSurveys&gt; startIndex[nSites];
-  int&lt;lower = 0, upper = totalSurveys&gt; endIndex[nSites];
+  int&lt;lower = 0, upper = totalSurveys&gt; startIndex[n_sampling_units];
+  int&lt;lower = 0, upper = totalSurveys&gt; endIndex[n_sampling_units];
   
   // summary of whether species is known to be present at each site
-  int&lt;lower = 0, upper = 1&gt; z[nSites];
+  int&lt;lower = 0, upper = 1&gt; z[n_sampling_units];
   
   // number of surveys at each site
-  int&lt;lower = 0&gt; nSurveys[nSites];
+  int&lt;lower = 0&gt; nSurveys[n_sampling_units];
 }
 parameters {
   vector[nPsiCoef] beta_psi;
@@ -943,15 +970,15 @@ parameters {
 }
 transformed parameters {
   vector[totalSurveys] logit_p = Vp * beta_p;
-  vector[nSites] logit_psi = Xpsi * beta_psi;
+  vector[n_sampling_units] logit_psi = Xpsi * beta_psi;
 }
 model {
-  vector[nSites] log_psi = log_inv_logit(logit_psi);
-  vector[nSites] log1m_psi = log1m_inv_logit(logit_psi);
+  vector[n_sampling_units] log_psi = log_inv_logit(logit_psi);
+  vector[n_sampling_units] log1m_psi = log1m_inv_logit(logit_psi);
   
   beta_psi ~ normal(0, 1);
   beta_p ~ normal(0, 1);
-  for (i in 1:nSites) {
+  for (i in 1:n_sampling_units) {
     if (nSurveys[i] &gt; 0) {
       if (z[i]) {
         // site is occupied
@@ -971,11 +998,13 @@ model {
 }</code></pre>
 <p>After building this model, it may be fit like any other model. Notice the use of the <code>pars</code> option in print to only print the parameters of interest. Also, this model did not calculate probabilities because of the coefficients.</p>
 <pre class="r"><code>## Fit long form model 
-fitWideMuLong &lt;- stan(&#39;./bernoulli-occupancy.stan&#39;,
-                      data= stan_d,
-                      chains = 4, iter = 2000)
+stan_model_bern &lt;- stan_model(&quot;./occupancy_bernoulli.stan&quot;)
 
-print(fitWideMuLong, pars = c(&quot;beta_psi&quot;, &quot;beta_p&quot;))
+fit_bern &lt;- sampling(stan_model_bern,
+                     data= stan_d,
+                     chains = 4, iter = 2000)
+
+print(fit_bern, pars = c(&quot;beta_psi&quot;, &quot;beta_p&quot;))
 
 ##              mean se_mean   sd  2.5%   25%   50%   75% 97.5% n_eff Rhat
 ## beta_psi[1] -0.52       0 0.13 -0.78 -0.60 -0.51 -0.43 -0.27  3909    1
@@ -999,6 +1028,10 @@ convergence, Rhat=1).</code></pre>
 <pre class="r"><code>plogis(0.39)</code></pre>
 <pre><code>## [1] 0.5962827</code></pre>
 </div>
+</div>
+<div id="summary" class="section level2">
+<h2>Summary</h2>
+<p>This chapter provided an introduction to two-level occupancy models in Stan. The formatting and coding of the models became progressively more difficult, but in doing so, gives us the opportunity to do more with the models.</p>
 </div>
 </div>
 <div id="edna-based-occupancy-models" class="section level1">
@@ -1209,7 +1242,7 @@ fitSummary &lt;- summary(fit)$summary</code></pre>
 ## delta_p[1]       -0.62   498 0.99
 ## lp__           -355.19   221 1.01
 ## 
-## Samples were drawn using NUTS(diag_e) at Thu Jun 13 13:37:59 2019.
+## Samples were drawn using NUTS(diag_e) at Thu Jun 13 15:21:25 2019.
 ## For each parameter, n_eff is a crude measure of effective sample size,
 ## and Rhat is the potential scale reduction factor on split chains (at 
 ## convergence, Rhat=1).</code></pre>

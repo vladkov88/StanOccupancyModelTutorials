@@ -1,14 +1,14 @@
 data {
-  int<lower=0> nSites;
-  int<lower=0> y[nSites];
-  int<lower=0> k[nSites];
+  int<lower=0> n_sampling_units;
+  int<lower=0> n_surveys;
+  int<lower=0,upper=1> y[n_sampling_units, n_surveys];
 }
 parameters {
   real muPsi;
   real muP;
 }
 model {
-  // local variables to avoid recomputing log(psi1) and log(1 - psi1)
+
   real log_muPsi;
   real log1m_muPsi;
 
@@ -19,14 +19,14 @@ model {
   muPsi ~ normal(0, 2);
   
   // likelihood
-  for (r in 1:nSites) {
-    if (y[r] > 0)
+  for (r in 1:n_sampling_units) {
+    if (sum(y[r]) > 0)
       target +=
-	log_muPsi + binomial_logit_lpmf(y[r] | k[r],  muP);
+	log_muPsi + bernoulli_logit_lpmf(y[r] | muP);
     else
       target +=
 	log_sum_exp(log_muPsi +
-		    binomial_logit_lpmf(y[r] | k[r], muP), log1m_muPsi);
+		    bernoulli_logit_lpmf(y[r] | muP), log1m_muPsi);
   }
 }
 generated quantities{

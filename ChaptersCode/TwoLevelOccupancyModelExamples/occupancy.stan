@@ -12,9 +12,9 @@
  */
 
 data {
-  int<lower=0> nSites;
-  int<lower=0> nSurveys;
-  int<lower=0,upper=1> y[nSites,nSurveys];
+  int<lower=0> n_sampling_units;
+  int<lower=0> n_surveys;
+  int<lower=0,upper=1> y[n_sampling_units, n_surveys];
 }
 parameters {
   real<lower=0,upper=1> psi;
@@ -32,7 +32,7 @@ model {
   p   ~ uniform(0,1);
   
   // likelihood
-  for (r in 1:nSites) {
+  for (r in 1:n_sampling_units) {
     if (sum(y[r]) > 0)
       target += log_psi + bernoulli_lpmf(y[r] | p);
     else
