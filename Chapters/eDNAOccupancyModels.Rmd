@@ -7,6 +7,7 @@ knitr::read_chunk('../ChaptersCode/eDNAOccupancy/eDNAoccupancy.R')
 
 This chapter covers occupancy models with subsampling. 
 The motivating example are eDNA-based occupancy models. 
+For examples, see Erickson et al. [(2019)](https://doi.org/10.1002/ieam.4155) or Mize et al. [(2019)](https://doi.org/10.1002/eap.1951) and the application of these models to a USFWS monitoring program. 
 Specifically, those with three levels: Site-level occupancy; Sample-level capture probabilities; and Molecular-level detection probabilities. 
 However, these models originated with ecological models with three-levels (e.g. sites, samples, and sub-samples) and this chapter could readily be applied to these models as well. 
 
@@ -17,7 +18,7 @@ Last, the chapter covers simulating data and fitting a Stan model to this data.
 
 ## Background on eDNA-based sampling 
 
-Most if not all organisms excrete DNA into their surroundings or environment. 
+Most if not all organisms excrete or shed DNA into their surroundings or environment. 
 This DNA is called environmental or eDNA. 
 Microbial and soil scientist have long used this DNA as a tool for detecting microbes in the soil because the method allows the detection of difficult to capture and culture species. 
 More recently, macro biologists discovered the power of sampling DNA. 
@@ -39,7 +40,7 @@ Additionally, we use an inconsistent mix of scalar and matrix/vector notation.
 ![Conceptual figure of eDNA sampling process. Figure by Bob Kratt, USGS.](./Chapters/eDNA-tree.png)
 
 The first level of the model examines the occurrence of eDNA at a location. 
-For example if we either visit the same site multiple times or visit multiple sites once, what's the probability eDNA will occur at the site. 
+For example if we either visit the same site multiple times or visit multiple sites once, what's the probability eDNA will occur at the site?
 The binary state variable, $Z$, denotes the observation of eDNA at a location during a visit. 
 If $Z = 0$, people did not detect eDNA in any samples. 
 If $Z = 1$, people did detect eDNA in at least one sample from a visit to a site. 
@@ -94,7 +95,7 @@ Here, $V$ is the predictor matrix and $\delta$ are the regression coefficients.
 Fitting the model presents statically challenges. 
 From a numerical perspective, the model contains 2 levels of latent variables. 
 These present challenges for Stan, which can be overcome by taking the discritizing the model. 
-These are covered in the next section. 
+Overcoming these are covered in the next section. 
 Detecting eDNA at a site also presents philosophical challenges. 
 What does the detection mean? 
 Is the species present or only its DNA? 
@@ -104,7 +105,6 @@ These questions are beyond the scope of this tutorial, but are important as eDNA
 
 
 ## Stan model 
-
 
 Define input variales, describe here 
 
