@@ -221,7 +221,11 @@ For each site visit, these calculations require the probability of sample captur
 
 ### Simulating data
 
+Need to write this section from scratch. 
+
 ### Stan model 
+
+Need to copy this over from another Git repo. 
 
 ## Summary
 
