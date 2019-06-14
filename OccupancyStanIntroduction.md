@@ -11,6 +11,7 @@ output:
     toc: yes
     toc_depth: '3'
     keep_md: true
+bibliography: bib.bib
 ---
 
 
@@ -975,8 +976,10 @@ The formatting and coding of the models became progressively more difficult, but
 
 This chapter covers occupancy models with subsampling. 
 The motivating example are eDNA-based occupancy models. 
+For examples, see Erickson et al. [(2019)](https://doi.org/10.1002/ieam.4155) or Mize et al. [(2019)](https://doi.org/10.1002/eap.1951) and the application of these models to a USFWS monitoring program. 
+These two examples are described in the next chapter.
 Specifically, those with three levels: Site-level occupancy; Sample-level capture probabilities; and Molecular-level detection probabilities. 
-However, these models orated with ecological models with three-levels (e.g. sites, samples, and sub-samples) and this chapter could readily be applied to these models as well. 
+However, these models originated with ecological models with three-levels (e.g. sites, samples, and sub-samples) and this chapter could readily be applied to these models as well. 
 
 The chapter includes a brief overview and background on eDNA. 
 Then, the chapter covers the statistical challenges of occupancy models. 
@@ -985,7 +988,7 @@ Last, the chapter covers simulating data and fitting a Stan model to this data.
 
 ## Background on eDNA-based sampling 
 
-Most if not all organisms excrete DNA into their surroundings or environment. 
+Most if not all organisms excrete or shed DNA into their surroundings or environment. 
 This DNA is called environmental or eDNA. 
 Microbial and soil scientist have long used this DNA as a tool for detecting microbes in the soil because the method allows the detection of difficult to capture and culture species. 
 More recently, macro biologists discovered the power of sampling DNA. 
@@ -1007,7 +1010,7 @@ Additionally, we use an inconsistent mix of scalar and matrix/vector notation.
 ![Conceptual figure of eDNA sampling process. Figure by Bob Kratt, USGS.](./Chapters/eDNA-tree.png)
 
 The first level of the model examines the occurrence of eDNA at a location. 
-For example if we either visit the same site multiple times or visit multiple sites once, what's the probability eDNA will occur at the site. 
+For example if we either visit the same site multiple times or visit multiple sites once, what's the probability eDNA will occur at the site?
 The binary state variable, $Z$, denotes the observation of eDNA at a location during a visit. 
 If $Z = 0$, people did not detect eDNA in any samples. 
 If $Z = 1$, people did detect eDNA in at least one sample from a visit to a site. 
@@ -1062,7 +1065,7 @@ Here, $V$ is the predictor matrix and $\delta$ are the regression coefficients.
 Fitting the model presents statically challenges. 
 From a numerical perspective, the model contains 2 levels of latent variables. 
 These present challenges for Stan, which can be overcome by taking the discritizing the model. 
-These are covered in the next section. 
+Overcoming these are covered in the next section. 
 Detecting eDNA at a site also presents philosophical challenges. 
 What does the detection mean? 
 Is the species present or only its DNA? 
@@ -1072,7 +1075,6 @@ These questions are beyond the scope of this tutorial, but are important as eDNA
 
 
 ## Stan model 
-
 
 Define input variales, describe here 
 
@@ -1372,7 +1374,7 @@ print(fit, pars = c("beta_psi", "alpha_theta", "delta_p",  "lp__"))
 ## delta_p[1]       -0.62   498 0.99
 ## lp__           -355.19   221 1.01
 ## 
-## Samples were drawn using NUTS(diag_e) at Thu Jun 13 15:21:25 2019.
+## Samples were drawn using NUTS(diag_e) at Fri Jun 14 11:43:28 2019.
 ## For each parameter, n_eff is a crude measure of effective sample size,
 ## and Rhat is the potential scale reduction factor on split chains (at 
 ## convergence, Rhat=1).
@@ -1461,3 +1463,328 @@ print(round(plogis(fitSummary[grep("delta_p", rownames(fitSummary)), c(4,1,8)] )
 ##  2.5%  mean 97.5% 
 ##  0.28  0.32  0.35
 ```
+
+
+# Applying eDNA-based methods to USFWS Bigheaded carp monitoring
+
+
+
+
+
+
+This chapter describes the application of eDNA-based sampling methods to monitoring for two invasive species, bighead carp and silver carp.
+These two species are closely related, and, in fact, hybridize in North America.
+Sometimes both species are called bigheaded carp. 
+The species were initially introduced to control algae in aquaculture and industrial settings (e.g., power plan and waste water treatment ponds) and since escaped into the wild. 
+The species are currently spreading throughout the Mississippi River basin. 
+One method the USFWS uses to monitor for these species are eDNA-based sampling. 
+
+This case study builds upon the previous presented occupancy model because of the sampling design. 
+The [USFWS Quality Assurance Project Plan (QAPP)](https://www.fws.gov/midwest/fisheries/eDNA/documents/QAPP.pdf) required two eDNA qPCR assays (ACTM1 and ACTM3) to both be positive for detection of "Asian carp" (i.e., Silver carp, bighead carp, or both). 
+The QAPP also used a second round of four assays (two for each species) to determine which species were present. 
+With the second assay, only one assay needed to be positive for a species to be detected. 
+For the purpose of my collaboration with the USFWS, we only considered the first round of assays. 
+
+My involvement with this project resulted in two papers. 
+An initial study used simulations and mathematical calculations examined different sampling designs for the project ([Erickson et al. 2019](https://doi.org/10.1002/ieam.4155)). 
+This study approach is analogous to "power analysis" for null-hypothesis significance testing. 
+The first part of this study used mathematical probability calculations to give numbers of samples required for detection probabilities. 
+These calculations are described in this chapter. 
+The second part of this study used simulated datasets to evaluate an occupancy model from the chapter. 
+These efforts are not describe in this chapter. 
+
+The second paper ([Mize et al. 2019](https://doi.org/10.1002/eap.1951)) created a new occupancy model with two different detection method. 
+The inspiration for this came from aerial surveys for dugongs which used two observers ([Pollock et al. 2006](https://doi.org/10.2193/0022-541X(2006)70[255:EAAIHE]2.0.CO;2)). 
+However, with this model, two detection probabilities are estimated. 
+The results probabilities are used to calculate a "probability of positive detection", which means both assays detected the species. 
+A walk through of this model is presented is presented as part of this chapter. 
+
+## Calculating minimum sampling efforts 
+
+This next section of text and code are adapted from an online supplement to Erickson et al. ([2019](https://doi.org/10.1002/ieam.4155)).
+Major changes include fixing typos and switching from the data.table package to the Tidyverse.
+Additionally, the I reformatted the source code.
+
+### Derviation of probabilty calculation
+
+Calculating the probability of eDNA occurring given two levels of sampling is not straight forward. 
+Rather than calculating the probability of detecting eDNA, we calculate the probability of non-detecting DNA and then subtract it from 1.
+The probability of eDNA occurring is a sample is \(\theta\).
+The probability of detecting eDNA within a sample given DNA is present within the sample is \(p\). 
+The probability of not detecting eDNA within a sample give multiple samples \(K\) may be written as \(1 - (1 -p)^K\).
+This calculation for non-detecting eDNA is broken down into two parts.
+First, the probability of not detecting eDNA because it truly is not in the sample needs to be calculated, which is \(1-\theta\), for a given sample.
+Second, the probability of missing eDNA even though the eDNA is present within the sample needs to be calculated as well: \(\theta (1 -p)^K\).
+
+For the case where only 1 sample is take (i.e., \(J =1 \)), the probability of not detecting eDNA in any sample of subsample may be written: 
+
+\(P(y_{j,k}=0 |\theta, p, k) =  1-\theta + \theta (1 - p)^k\).
+
+For the case when 2 samples are taken (i.e, \(J = 2\)), the probability of not detecting eDNA in any of the subsampels may be written as:
+
+\(P(y_{j,k}=0  | \theta, p, k) =  (1-\theta)^2 + 2 (1-\theta)(\theta (1 - p)^k ) + (\theta (1 - p)^k)^2\).
+
+For \(J=3\), it follows that:
+
+\(P(y_{j,k}=0 | \theta, p, k) =  (1-\theta)^3 + 3 (1-\theta)^2(\theta (1 - p)^k) + 3 (1-\theta)(\theta (1 - p)^k )^2 + (\theta (1 - p)^k)^3\).
+
+In turn, this generalizes to be
+
+\(P(y_{j,k} =0|\theta, p,k) = \sum_{j=1}^{J} = {{J}\choose{j}} (1 - \theta)^j (\theta (1 - p)^k)^{J-j}\).
+
+
+### Data source and parameter values
+
+The observation and detection probabilities are based upon ranges found in the literature and described in our corresponding manuscript.
+
+### Probability of detecting a species (Occupuancy only)
+
+The first analysis we run estimates the probability of detecting a species at site. This does not allow us to distinguish different densities. Rather it simply informs if a species is present at a site.
+
+We first write a function that estimates the probability of detecting a species assuming different numbers of samples, `J`; probabilities of samples containing DNA, `theta`; different numbers of assay replicates, `K`; and different detection probabilities for the assay, `pDetection` (we choose to use `pDetection` rather than `p` to have a variable that was easier to find in our code). We derived this relationship in a previous section of the document. We also define a helper functions, `combo()`.
+
+
+```r
+comb = function(n, r){ factorial(n)/(factorial(r) * factorial(n -r ))}
+
+sample_detect_one <-
+    Vectorize(function(J = 50,
+                       K = 8,
+                       theta = 0.06,
+                       p_detection  = 0.3
+                       ){
+        j_index = J:0
+	prob = 	sum(
+            comb( J, j_index) *
+            (1 - theta) ^ j_index *
+            (theta * (1 - p_detection)^K )  ^ rev(j_index))
+	return(1 - prob)
+    })
+```
+
+Next, we explore different sample numbers, \(J \in 1, 2, \ldots 120\); different assay detection probabilities, \(\theta \in \{0.05, 0.1, 0.2, 0.4, 0.8, 1.0\}\); different sample detection probabilities, \(p \in \{0.05, 0.1, 0.2, 0.4, 0.8, 1.0\}\); and different numbers of molecular replicates \(K \in \{2, 4, 8, 16\}\).
+
+We use the `tidyverse` packages for storing and manipulating my data.
+
+
+```r
+results <-
+    expand.grid(J = 1:120,
+                theta = c(0.05, 0.1, 0.2, 0.4, 0.8, 1.0), 
+                p_detection = c(0.05, 0.1, 0.2, 0.4, 0.8, 1.0),
+                K = c(2, 4, 8, 16)) %>%
+    as_tibble()
+
+results <- 
+    results %>%
+    mutate(prob_detect = sample_detect_one(J = J, K = K,
+                                           theta = theta,
+                                           p_detection = p_detection),
+           theta_plot = factor(paste0("theta = ", theta)),
+           p_detection_plot = factor(paste0("p = ", p_detection)),
+           K_plot = factor(paste0("K = ", K))) %>%
+    mutate(K_plot = fct_reorder(K_plot, K))
+```
+
+Last, we plot the results using `ggplot2` (which is loaded as part of the Tidyverse).
+
+
+```r
+detect_one <-
+    ggplot(data = results, aes(x = J, y = prob_detect, color = K_plot)) +
+    geom_line() +
+    facet_grid( p_detection_plot ~ theta,
+               labeller = label_bquote(cols = theta == .(theta))) +
+    theme_minimal() +
+    ylab("Probabiltiy of detecting species at site") +
+    xlab("Number of samples per site (J)") +
+    scale_color_manual("Molecular\nreplicates",
+                       values = c("red", "blue", "black", "seagreen",
+                                  "orange", "grey50")) +
+    scale_x_continuous(breaks = seq(0,125, by = 30)) +
+    scale_y_continuous(breaks = seq(0,1, by = .5)) +
+    theme(axis.text.x = element_text(angle = -90, hjust = 0),
+          panel.spacing = unit(1, "lines"))
+print(detect_one)
+```
+
+![Probability of detecting a species in at least one sample at a site given different assay and sample detection probabilities.](OccupancyStanIntroduction_files/figure-html/occ_code-1.png)
+
+### Probability of having different observable sample occurancies
+
+A more interesting question than simply detecting species at a site using eDNA is "Can eDNA detect different levels of sample occurrence at sites?". 
+To do this, we conduct a simulation study.
+
+First, we simulate the probability of a water sample (e.g., grabbing water from the environment, extracting eDNA, etc.) _capturing_ eDNA.
+To avoid confusion, consider this _capturing_ eDNA even through this statistically and biologically this is a type of sampling. 
+To simulate this, we tell R to draw a sample for each row from binomial distribution. 
+The number of samples taken is \(J\) and the probability a sample contains eDNA is  \(\theta\). 
+
+Second, we sample again from a binomial distribution again to account for imperfect detection of the molecular method. 
+The number of samples drawn is the number of samples containing eDNA from the previous simulation. 
+The probability eDNA is detected in a sample based upon the probability of detection, \(p\), and the number of molecular replicates, \(K\): `prob = 1 - (1 - p)^K`. 
+
+
+
+```r
+samples_detect <-
+    function(
+             n_sims = 2,
+             J_in = c(10, 100),
+             theta_in = c(0.1, 0.9),
+             K_in = 8,
+             p_detection_in = c(0.25, 0.75)
+             ){
+        
+        results <-
+            expand.grid(simulation = 1:n_sims,
+                        J = J_in, theta = theta_in,
+                        K = K_in, p_detection = p_detection_in) %>%
+            as_tibble()
+
+        results <-
+            results %>%
+            mutate(samples_DNA = rbinom(n = nrow(results),
+                                        size = J,
+                                        prob = theta)) %>%
+            mutate(samples_detect = rbinom(n = nrow(results),
+                                         size = samples_DNA,
+                                         prob = 1 - (1 - p_detection)^K) ) %>%
+            mutate(samples_p_positive = samples_detect /  J,
+                   Samples_plot = factor(paste0("J = ", J)),
+                   theta_plot = factor(paste0("theta = ", theta)),
+                   p_detection_plot = factor(paste0("p = ", p_detection)),
+                   K_plot = paste0("K = ", K)) %>%
+            mutate(Samples_plot = fct_reorder(Samples_plot, J),
+                   theta_plot = fct_reorder(theta_plot, theta),
+                   p_detection_plot = fct_reorder(p_detection_plot, p_detection),
+                   K_plot = fct_reorder(K_plot, K))
+
+	return(results)
+}
+```
+
+We explore different sample numbers, \(n \in \{5, 10, 20, 40, 80, 120\}\); different assay detection probabilities, \(p \in \{0.05, 0.1, 0.2, 0.4, 0.8, 1.0\}\); and different sample detection probabilities, \(\theta \in \{0.05, 0.1, 0.2, 0.4, 0.8, 1.0\}\) by running 500 simulations (The original code ran 4,000, but fewer are run here to speed up the creation of this document).
+
+
+```r
+sample_results <- samples_detect(n_sims = 500,
+                                 theta = c(0.05, 0.1, 0.2, 0.4, 0.8, 1.0),
+                                 p_detection = c(0.05, 0.1, 0.2, 0.4, 0.8, 1.0),
+                                 J = c(5, 10, 20, 40, 80, 120),
+                                 K = c(2, 4, 8, 16))
+
+compare_sites <-
+    ggplot(sample_results,
+           aes(x = K_plot, y = samples_p_positive, color = factor(theta))) +
+	geom_boxplot(outlier.size = 0.5) +
+	facet_grid(  Samples_plot ~  p_detection_plot ) +
+    theme_minimal() +
+    ylab(expression("Simulated "*theta~bgroup("(",
+                                              over("Number of simulated positive samples",
+                                                   "Total number of simulated samples"), ")"))) +
+    xlab("Number of molecular replicates (K)") +
+    scale_color_manual(expression("Generating "* theta),
+                       values = c("red", "blue", "black", "seagreen", "orange", "grey50"))
+print(compare_sites)
+```
+
+![](OccupancyStanIntroduction_files/figure-html/occ_prob_sim-1.png)<!-- -->
+
+Last, we plot the results using `ggplot2`
+
+
+
+## eDNA-based monitoring of bighead carp 
+
+As mentioned in the introduction, a new occupancy model was developed for the eDNA sampling design used by the USFWS. 
+During this section, I will first review the equations for this model.
+Next, I will go through the code for the model. 
+
+### Equations for USFWS eDNA model
+
+We developed equations to match our sampling methods that are described in the main manuscript.
+To do this, we adapted equations from Erickson et al. [-@erickson2019sampling] to include two qPCR assays rather than the one.  
+Broadly, we visited each site multiple times, collected multiple samples samples per site/visit combination, and used two qPCR assays on each sample.
+We ran each qPCR assay in replicate. 
+
+To begin our equation documentation, we define our different indexing used for replication. 
+The equations include the following levels indexing (denoted using subscripts):
+
+-  Sites are indexed  using \(i\), \(i \in 1, 2, \ldots N_{\text{sites}}\) or denoted using the site name; 
+-  Visits to a site are indexed using \(v\), \(v \in 1, 2, \ldots N_{\text{visit}}\) or denoted using the sampling month;
+-  Collection samples at a specific site \(i\) during visit \(v\) are  indexed using \(j\), \(j \in 1, 2, \ldots J\);
+-  qPCR replicates from site \(i\) during visit \(v\) and collection sample \(j\) are indexed using \(k\), \(k \in 1, 2, \ldots K\).
+
+The possible values for each level are included in a table:  _Possible values for each index levels_.
+
+Table: Possible values for each index level:
+
+| Level             | Value Name                                                         |
+|-------------------|--------------------------------------------------------------------|
+| Site              | Boston Bay, Dam 17 spillway, Dam 18 spillway, Iowa River tributary |
+| Visit             | April, May, November                                               |
+| Collection sample | Not named                                                          |
+|                   | 105 samples for the dam spillways                                  |
+|                   | 114 samples for the other sites                                    |
+| qPCR replicates   | Not names                                                          |
+|                   | 9 replicates for all samples                                       |
+
+The state variables for the model were the detection or non-detection at each level.
+For example, if one qPCR replicate detected the target eDNA, than all of the higher levels (i.e., collection sample, and site) would be a detection or 1.
+If eDNA was detected within site \(i\) during visit \(v\), \(\textbf{Z}_{i,v}\) would be 1, otherwise 0. 
+If eDNA was detected within a collection sample using either qPCR assay at site \(i\) during visit \(v\) within sample \(j\), \(\textbf{A}_{i,v, j}\) would be 1, otherwise 0. 
+If eDNA was detected using the ACTM1 qPCR assay at site \(i\) during visit \(v\) within sample \(j\), \(\textbf{Y}_{i,v, j}^{\text{ACTM1}}\) would be the number of positive replicates, 0, 1, 2, \ldots \(K\).  
+If eDNA was detected using the ACTM3 qPCR assay at site \(i\) during visit \(v\) within sample \(j\), \(\textbf{Y}_{i,v, j}^{\text{ACTM3}}\) would be the number of positive replicates, 0, 1, 2, \ldots \(K\).  
+The last two variables differ from Erickson et al. [-@erickson2019sampling] because they only examined a single assay, which was denoted using a \textbf{Y}.
+We based our superscript notation upon Nichols et al. [-@nichols2008multi], who presented two-level occupancy models with multiple observers. 
+
+The state variables also had corresponding probabilities. 
+The probability eDNA occurred at site \(i\) was estimated across visits: \(\psi_{i}\).
+The probability of eDNA being captured within samples was estimated for each visit \(v\) to site \(i\): \(\theta_{i, v}\).
+The probability of detecting eDNA at site \(i\) during visit \(v\) using  ACTM1 qPCR assay was \(p_{i,v}^{\text{ACTM1}}\).
+The probability of detecting eDNA at site \(i\) during visit \(v\) using  ACTM3 qPCR assay was \(p_{i,v}^{\text{ACTM3}}\).
+
+
+The highest level of the model is the relationship between the site-level occurrence probability and detection during visits to a site:
+
+\(\textbf{Z}_{i,v} &\sim& \text{Bernoulli}( \psi_{i}).\)
+
+The next level of the model is the relationship between the sample-level capture probability and capture during a visit to a site, which is conditional upon target eDNA being present at the site:
+
+\(\textbf{A}_{i,v,j} | \textbf{Z}_{i,v} &\sim& \text{Bernoulli}(\textbf{Z}_{i,v}  \theta_{i,v}).\)
+
+For this level, we also estimated regression coefficients for collection sample temperature and depth on the logit scale:
+\(\mu_{\theta_{i,v}}  &=& \text{logit}(\theta_{i,v}) \)
+
+\(\mu_{\theta_{i,v}}  &=& \textbf{w}^{\prime}_{i,v} \alpha\)
+
+We specifically estimated an intercept for each site visit, a slope parameter for sample depth, and a slope parameter for sample water temperature. 
+The lowest level of the model is the relationship between the assays detection probabilities and detection within an assay. 
+These use a binomial distribution with \(K = 8\) draws, which is a generalization of a Bernoulli, which has an implicit single draw (i.e., binomial(\ldots, \(K = 1\))). This levels is conditional upon eDNA being detected within a sample:
+
+\(\textbf{Y}_{i,v,j}^{\text{ACTM1}} | \textbf{A}_{i,v,j} &\sim& \text{binomial}(\textbf{A}_{i,v,j}  p_{i,v}^{\text{ACTM1}}, K)\)
+
+\(\textbf{Y}_{i,v,j}^{\text{ACTM3}} | \textbf{A}_{i,v,j} &\sim& \text{binomial}(\textbf{A}_{i,v,j}  p_{i,v}^{\text{ACTM3}}, K).\)
+
+For this level, we also estimated regression coefficients for collection sample temperature and depth on the logit scale:
+
+\(\mu_{p_{i,v}^{\text{ACTM1}}}  &=& \text{logit}(p_{i,v}^{\text{ACTM1}}),\)
+
+\(\mu_{p_{i,v}^{\text{ACTM1}}}  &=& \textbf{v}^{\prime}_{i,v} \delta^{\text{ACTM1}},\)
+
+\(\mu_{p_{i,v}^{\text{ACTM3}}}  &=& \text{logit}(p_{i,v}^{\text{ACTM3}}), \ \text{and} \)
+
+\(\mu_{p_{i,v}^{\text{ACTM3}}}  &=& \textbf{v}^{\prime}_{i,v} \delta^{\text{ACTM3}}.\)
+
+We specifically estimated an intercept for each site visit, a slope parameter for sample depth, and a slope parameter for sample water temperature for each qPCR assay.
+
+Using parameter estimates from the above equations, we were able to calculate the probability of detecting eDNA using both ACTM1 and ACTM3 using our sampling design of 8 molecular replicates,  \(p_{i,v}^{\ast}\).
+We refer to these positive samples as a ``positive sample''. 
+These calculations are similar to the work of \citet{pollock2006estimating}.  
+Also, we assumed that when a sample had one assay detect eDNA, but the other did not, the non-detect was a false negative.  
+Compared to traditionally occupancy models, this would be the equivalent of one observer (e.g., bird watcher) or detection method (e.g., electrofishing vs gill netting) detecting a species and the other one missing the species.
+For each site visit, these calculations require the probability of sample capture as well as the probability of detection for each assay 
+
+\(p_{i,v}^{\ast}= \theta_{i, v} ( 1 - (1 - p_{i,v}^{\text{ACTM1}})^K ) ( 1 - (1 - p_{i,v}^{\text{ACTM3}})^K )\)
+

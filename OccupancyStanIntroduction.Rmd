@@ -11,6 +11,7 @@ output:
     toc: yes
     toc_depth: '3'
     keep_md: true
+bibliography: bib.bib
 ---
 
 ```{r setup, include=FALSE}
@@ -27,4 +28,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r child = './Chapters/eDNAOccupancyModels.Rmd'}
+```
+
+```{r child = './Chapters/eDNA_USFWS_carp.Rmd'}
 ```
