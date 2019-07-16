@@ -12,13 +12,13 @@ Second, the transformations buildup to allow for more complicated models such as
 For the purpose of this chapter we use the term _sampling unit_ to refer to the observation.
 Sampling units can be replicated across space, time, or both. 
 
-This chapter usesa simple occupancy model that has one site with multiple observation points (e.g., cameras or traps). 
+This chapter uses a simple occupancy model that has one site with multiple observation points (e.g., cameras or traps). 
 This model is presented in four different forms:
 
 1.  The first and simplest model directly estimates probabilities of detection and occupancy. 
 This model takes a site-by-visit (row of sites, columns of visits or surveys to each site) matrix as the input. 
 2. The second model then gets changed to estimate parameters on the logit-scale. 
-3. The third model uses an input vector of the sum of number visits with detentions. 
+3. The third model uses an input vector of the sum of number visits with detections. 
 4. The fourth model uses an input vector of binary observations for each visit to a site. 
 
 ## Simple occupancy model overview 
@@ -34,7 +34,7 @@ During simulations, we simulate this value and it is known.
 With actual data, we have a $Z_{obs}$. 
 The probability of detection at a site is $p$ and is estimated on the logit scale: $\mu_{p}$.
 $\mu_\psi$ is predicted by $V \alpha$.
-The raw data for this would $Y$ where the index of $Y$ corresponds to the observation.
+The raw data for this would be $Y$ where the index of $Y$ corresponds to the observation.
 $Y$ must be binary (i.e., 0s or 1s).
 Because we are estimating a single intercept, we only need a vector of 1s as our predictor matrix (or, in this case, scalar) $X$.
 Note that we could simplify this model several ways (e.g., hard coding a single intercept, estimating on the probability scale rather than logit), but use the current formulation because we need these tools later either to extend the model or for numerical efficiency. 
@@ -91,7 +91,7 @@ This includes an if-else statement to account for detection (`if`) or non-detect
 The data simulation process also can provide us with insight into the how the model works and how we assume our data generation process works. 
 For this case, we are specifying the number of sites and visits (or surveys) per site. 
 We also specify our simulated probability of detection $p$, `p`, and site occupancy probability $psi$, `psi`.
-The next simulation step is to simulate if the sites are occupied and then simulation the surveys at each site. 
+The next simulation step is to simulate if the sites are occupied and then simulate the surveys at each site. 
 Last, the data are wrapped into a list for Stan.
 
 
@@ -156,7 +156,7 @@ The model code block is also written differently now.
 Key differences include
 
   - Slightly different likelihood functions are used; and 
-  - the `mu` parameters are now real number that can range from minus infinity to positive infinity. 
+  - the `mu` parameters are now real numbers that can range from minus infinity to positive infinity. 
 
 However, the model is still very similar to the previously defined model.
 
@@ -183,7 +183,7 @@ However, the model is still very similar to the previously defined model.
       }
     }
 
-We can transform the parameters to the logit scale to the probability scale in Stan using the `generated quantities` code block. 
+We can transform the parameters from the logit scale to the probability scale in Stan using the `generated quantities` code block. 
 This code block is complied so it is quick, but does not get run through MCMC algorithm and slow down the model. 
 
     generated quantities{
@@ -253,7 +253,7 @@ As well as the likelihood portion of the `model`:
     		    binomial_logit_lpmf(y[r] | k[r], muP), log1m_muPsi);
       }
 
-Before we can fit the model, we need to sum and reformat our data our data:
+Before we can fit the model, we need to sum and reformat our data:
 
 ```{r convertToBin, eval = FALSE}
 ```
