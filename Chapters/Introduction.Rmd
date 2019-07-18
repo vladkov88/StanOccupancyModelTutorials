@@ -18,7 +18,7 @@ Occupancy models can be extended to other situations with imperfect detection as
 ## Perfect detection: The logistic regression
 
 In a world with perfect detection (i.e., $p$ = 1), we would not need occupancy models because the species we are looking for would always be detected if they were present. 
-In these situations, we could simply use a logistic regression to model the probability that a site is occupied.
+In these situations, we could simply use logistic regression to model the probability that a site is occupied.
 In base R, we would use the `glm()` function to fit this model using a maximum likelihood approach:
 
 ```{r glmExample, eval = FALSE}
@@ -32,10 +32,10 @@ Note, that if we want, we can fit the model using a probit link function rather 
 Many [good tutorials exist on the differences between probits and logits](http://lmgtfy.com/?q=probit+vs+logit).
 Usually, the models produce similar results, although the logit has a slightly fatter tail. 
 Personally, I prefer logits if for no other reason than that is what my PhD advisor used.
-The reason for mentioning the logit versus probit is that we need to be explicit about our modeling assumption when moving on to Stan and knowing other options exist help see why. 
+The reason for mentioning the logit versus probit is that we need to be explicit about our modeling assumption when moving on to Stan and knowing other options exist helps see why. 
 
 
-The logit model may be also easily coded in Stan as well. 
+The logit model may be easily coded in Stan as well. 
 I would save this script as a `logistic_stan.stan` (**Important note:** Stan models must end with `.stan` with a lower case `s`, otherwise the model will not be complied):
 
     data {
@@ -60,7 +60,7 @@ After saving this code as `logistic_stan.stan`, we can call the model from R. We
 
 A few things to point out.
 
-1. Unlike base R, rstan does not have a nice wrapper function. This means we must use integers as the id variable each observation rather than characters or factors.
+1. Unlike base R, rstan does not have a nice wrapper function. This means we must use integers as the id variable for each observation rather than characters or factors.
 2. You will want to increase the number of iterations when actually running the model for use. When troubleshooting, I use 100s. When running for publication, I use 1,000s to 10,000s or more.
 3. Notice the Bayesian model diagnostics. If these are unfamiliar to you, I suggest working through BDA3 by Gelman et al. or other introductory Bayesian stats book. The [Shinystan](http://mc-stan.org/users/interfaces/shinystan) interface provides many different Bayesian diagnostics tools that work with Stan.
 
@@ -87,13 +87,13 @@ Our code now looks like this and is saved in the file `logistic_target_stan.stan
           }
     }
 
-From both of the above example, there are some important features of Stan to note:
+From both of the above examples, there are some important features of Stan to note:
 
 First, unlike R or JAGS, Stan requires us to explicitly declare variables like C++. 
 A downside is that the language can be less forgiving.
-An upside is that the language makes us be precise and makes it harder to "programming by coincidence".
+An upside is that the language makes us be precise and makes it harder to do "programming by coincidence".
 Rather than simply estimate parameters using a model, we must understand their data structure within the model.
-That being said, I've spend many an hour refreshing my linear algebra skills to understand my Stan code and dimensions of objects.
+That being said, I've spent many an hour refreshing my linear algebra skills to understand my Stan code and dimensions of objects.
 But, the end products were code that I now trust and run quickly.
 
 Second, Stan uses code blocks.
@@ -133,19 +133,19 @@ During this code example, you will see how to fit a model using all three method
 
 For occurrence models in Stan, we must use the Bernoulli distribution (or Binomial with `K = 1`) for the latent variables because we cannot aggregate the data.
 Specifically, we need details about each replicate at a lower level.
-For example, We cannot aggregate and say that 3 sites had Robins and 2 sites did not. Instead, we need a vector of of these site-level detentions, for example `c(0, 1, 1, 0, 1, 1, 1)`.
+For example, We cannot aggregate and say that 3 sites had Robins and 2 sites did not. Instead, we need a vector of these site-level detentions, for example `c(0, 1, 1, 0, 1, 1, 1)`.
 For the lowest level of the occurrence model, I often do use a Bernoulli distribution when I do not have coefficients at the observation-level because there are fewer data entries to aggregate over.
 We will see these in later chapters. 
 
 ## Matrix notation and occupancy models
 
 
-Models in R such as `lm()` and `glm()` allow users to input [formuals](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/formula.html).
+Models in R such as `lm()` and `glm()` allow users to input [formulas](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/formula.html).
 Formulas allow users to input factors and have R convert them to a matrix of dummy variables. 
 [`model.matrix()`](http://stat.ethz.ch/R-manual/R-devel/library/stats/html/model.matrix.html) allows us to create these same type matrices of input variables. 
 There are several benefits to using `model.matrix()` to pre-process inputs for Stan.
 First, it allows us to easily turn factors into [dummy variables](https://en.wikipedia.org/wiki/Dummy_variable_(statistics)).
-Second, it allows us to easily have matrices of predictors, which in turn allows us to us matrix algebra within Stan. 
+Second, it allows us to easily have matrices of predictors, which in turn allows us to use matrix algebra within Stan. 
 This section introduces `model.matrix()` so that it will be familiar to us later. 
 **Note:** I use shorter matrices than most real applications to save screen space.
  
@@ -153,7 +153,7 @@ This section introduces `model.matrix()` so that it will be familiar to us later
 ### model.matrix basis 
 
 `model.matrix()` use the `~` (shift-\` on US keyboards) for its input.
-In statistical English, this could be read as "predicted by", for example `y ~ x` could be spoken or read as y predicted by x.
+In statistical English, this could be read as "predicted by", for example `y ~ x` could be spoken or read as "y predicted by x."
 The follow example demonstrates how it may be used on a simple factor data.frame:
 
 
