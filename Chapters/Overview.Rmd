@@ -1,12 +1,12 @@
 # Overview
 
 This document provides an introduction to [occupancy models](https://www.nps.gov/olym/learn/nature/upload/OccupancyModelFactSheet.pdf) in [Stan](http://mc-stan.org/).
-The terms occupancy models and occurrence models can be used synonymous from a statistical and programming perspective, but can have important ecological differences from a scientific perspective. 
+The terms occupancy models and occurrence models can be used synonymously from a statistical and programming perspective, but can have important ecological differences from a scientific perspective. 
 Both terms are used interchangeably within this document unless specifically indicated that one term is appropriate for a specific use.
 
 ## Motivation 
 
-This document was created help collaborators learn how program occupancy models in Stan. 
+This document was created to help collaborators learn how to program occupancy models in Stan. 
 Occupancy models can be difficult to program in Stan because they have discrete latent variables (i.e., the site-level occupancy).
 However, compared to other Bayesian programs, Stan can offer better [performance](http://andrewgelman.com/wp-content/uploads/2014/06/stan-overview-dauphine-2014.pdf) (e.g., more rapidly fitting models, converging when other models could not, fewer iterations required).
 
