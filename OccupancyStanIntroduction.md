@@ -854,7 +854,12 @@ These are same type that are created by `model.matrix()`.
     data {
       // site-level occupancy covariates
       int<lower = 1> n_sampling_units;
-      int<lower = 1> nPsiCoef;
+      int<lower = 1> nPsiCoef; 
+      
+      //Hi Richard, I get an error when trying to run your example model. It reads: Error in mod$fit_ptr() : Exception: variable does not exist; processing stage=data initialization; variable name=nPsiCoef; base type=int  (in 'model22d07003a6b_bayes_occ_covs' at line 6) failed to create the sampler; sampling not done 
+      
+      // Can you please assist? I believe it is because nPsiCoef is not created in the R script before trying to run the model. I imagine the same will hold true for nPCoef. Thanks!
+
       matrix[n_sampling_units, nPsiCoef] Xpsi;
       
       // survey-level detection covariates
